@@ -6,7 +6,7 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 %GeminiCliSdk.Options{
-  model: nil,                      # Model name (e.g., "gemini-3.0-flash", "gemini-3.0-pro")
+  model: nil,                      # Model name (e.g., Models.fast_model(), Models.default_model())
   yolo: false,                     # Skip all confirmation prompts
   approval_mode: nil,              # "auto-edit" | "full-auto" | nil
   sandbox: false,                  # Run in sandbox mode
@@ -31,7 +31,7 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 # Use a specific model
-opts = %GeminiCliSdk.Options{model: "gemini-3.0-flash"}
+opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
 {:ok, response} = GeminiCliSdk.run("Quick question", opts)
 ```
 
@@ -75,7 +75,7 @@ opts = %GeminiCliSdk.Options{cwd: "/path/to/project"}
 opts = %GeminiCliSdk.Options{
   env: %{
     "GEMINI_API_KEY" => "your-key-here",
-    "GEMINI_MODEL" => "gemini-3.0-flash"
+    "GEMINI_MODEL" => GeminiCliSdk.Models.fast_model()
   }
 }
 ```
@@ -105,7 +105,7 @@ opts = %GeminiCliSdk.Options{
 ```elixir
 # Enable CLI extensions
 opts = %GeminiCliSdk.Options{
-  extensions: ["@anthropic-ai/gemini-extension-code"]
+  extensions: ["my-gemini-extension"]
 }
 ```
 

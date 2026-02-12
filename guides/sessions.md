@@ -55,7 +55,7 @@ end)
 
 ```elixir
 opts = %GeminiCliSdk.Options{
-  model: "gemini-3.0-flash",
+  model: GeminiCliSdk.Models.fast_model(),
   timeout_ms: 120_000
 }
 

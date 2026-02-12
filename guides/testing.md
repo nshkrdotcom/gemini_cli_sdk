@@ -51,7 +51,7 @@ end
 For more realistic tests, create JSONL fixture files that mirror real CLI output:
 
 ```json
-{"type":"init","timestamp":"2026-01-01T00:00:00Z","session_id":"test-001","model":"gemini-3.0-pro"}
+{"type":"init","timestamp":"2026-01-01T00:00:00Z","session_id":"test-001","model":"gemini-2.5-pro"}
 {"type":"message","role":"user","content":"hello","timestamp":"2026-01-01T00:00:01Z"}
 {"type":"message","role":"assistant","content":"Hello! How can I help?","delta":true,"timestamp":"2026-01-01T00:00:02Z"}
 {"type":"result","status":"success","stats":{"total_tokens":50,"input_tokens":10,"output_tokens":40,"duration_ms":500,"tool_calls":0},"timestamp":"2026-01-01T00:00:03Z"}
@@ -81,7 +81,7 @@ defmodule MyApp.AI.Gemini do
 
   @impl true
   def ask(prompt) do
-    GeminiCliSdk.run(prompt, %GeminiCliSdk.Options{model: "gemini-3.0-flash"})
+    GeminiCliSdk.run(prompt, %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()})
   end
 end
 

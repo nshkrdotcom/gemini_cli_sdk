@@ -16,7 +16,9 @@ prompts = [
 for {prompt, idx} <- Enum.with_index(prompts, 1) do
   IO.puts("#{idx}. #{prompt}")
 
-  case GeminiCliSdk.run(prompt, %GeminiCliSdk.Options{timeout_ms: 30_000}) do
+  opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: 30_000}
+
+  case GeminiCliSdk.run(prompt, opts) do
     {:ok, response} ->
       IO.puts("   => #{String.trim(response)}\n")
 

@@ -21,7 +21,7 @@ defmodule GeminiCliSdk.ArgBuilder do
   end
 
   defp add_prompt_flag(args, nil), do: args
-  defp add_prompt_flag(args, _prompt), do: args ++ ["--prompt", ""]
+  defp add_prompt_flag(args, prompt), do: args ++ ["--prompt", prompt]
 
   defp add_output_format(args, %Options{output_format: fmt}) when is_binary(fmt) do
     args ++ ["--output-format", fmt]

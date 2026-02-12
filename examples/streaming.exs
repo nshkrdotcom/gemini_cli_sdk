@@ -10,7 +10,9 @@ alias GeminiCliSdk.Types
 
 IO.puts("=== Streaming ===\n")
 
-GeminiCliSdk.execute("Explain the BEAM VM in 3 paragraphs")
+opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
+
+GeminiCliSdk.execute("Explain the BEAM VM in 3 paragraphs", opts)
 |> Enum.each(fn event ->
   case event do
     %Types.InitEvent{model: model, session_id: sid} ->
@@ -19,11 +21,11 @@ GeminiCliSdk.execute("Explain the BEAM VM in 3 paragraphs")
     %Types.MessageEvent{role: "assistant", content: text} ->
       IO.write(text)
 
-    %Types.ToolUseEvent{name: name} ->
+    %Types.ToolUseEvent{tool_name: name} ->
       IO.puts(:stderr, "\n[tool_use] #{name}")
 
-    %Types.ToolResultEvent{name: name} ->
-      IO.puts(:stderr, "[tool_result] #{name}")
+    %Types.ToolResultEvent{tool_id: id} ->
+      IO.puts(:stderr, "[tool_result] #{id}")
 
     %Types.ResultEvent{status: status, stats: stats} ->
       IO.puts("\n")

@@ -41,7 +41,7 @@ Common error kinds:
 
 ```elixir
 opts = %GeminiCliSdk.Options{
-  model: "gemini-3.0-flash",
+  model: GeminiCliSdk.Models.fast_model(),
   yolo: true,
   timeout_ms: 60_000
 }

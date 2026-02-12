@@ -10,5 +10,5 @@ trap '' TERM
 trap '' INT
 
 # Emit one line so the test knows we started, then block
-echo '{"type":"init","session_id":"stubborn","model":"gemini-3.0-pro"}'
+echo '{"type":"init","session_id":"stubborn","model":"gemini-2.5-pro"}'
 tail -f /dev/null

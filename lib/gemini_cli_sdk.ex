@@ -38,9 +38,9 @@ defmodule GeminiCliSdk do
   Starts a Gemini CLI session and returns a lazy stream of typed events.
 
   The stream is backed by `Stream.resource/3`. It spawns the `gemini` subprocess
-  with `--output-format stream-json`, pipes the prompt to stdin, and yields one
-  event struct per JSONL line. The subprocess is killed and cleaned up when the
-  stream is halted, fully consumed, or the owning process dies.
+  with `--output-format stream-json` and `--prompt` carrying the prompt text, then
+  yields one event struct per JSONL line. The subprocess is killed and cleaned up
+  when the stream is halted, fully consumed, or the owning process dies.
   """
   @spec execute(String.t(), Options.t()) :: Enumerable.t(event())
   def execute(prompt, opts \\ %Options{}) do

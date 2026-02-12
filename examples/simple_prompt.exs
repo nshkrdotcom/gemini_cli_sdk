@@ -7,7 +7,9 @@
 
 IO.puts("=== Simple Prompt ===\n")
 
-case GeminiCliSdk.run("What is Elixir in one sentence?") do
+opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
+
+case GeminiCliSdk.run("What is Elixir in one sentence?", opts) do
   {:ok, response} ->
     IO.puts(response)
 

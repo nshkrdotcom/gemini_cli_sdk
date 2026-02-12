@@ -6,8 +6,8 @@
 2. **Gemini CLI** installed and authenticated:
 
 ```bash
-# Install the Gemini CLI
-npm install -g @anthropic-ai/gemini
+# Install the Gemini CLI (or just have npx available -- the SDK finds it automatically)
+npm install -g @google/gemini-cli
 
 # Authenticate
 gemini auth login
@@ -69,7 +69,7 @@ IO.puts(response)
 
 ```elixir
 opts = %GeminiCliSdk.Options{
-  model: "gemini-3.0-flash",
+  model: GeminiCliSdk.Models.fast_model(),
   timeout_ms: 60_000
 }
 

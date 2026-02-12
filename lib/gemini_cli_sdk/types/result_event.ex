@@ -23,8 +23,13 @@ defmodule GeminiCliSdk.Types.ResultEvent do
       type: map["type"] || "result",
       timestamp: map["timestamp"],
       status: map["status"] || "",
-      error: map["error"],
+      error: extract_error_message(map["error"]),
       stats: Stats.from_map(map["stats"])
     }
   end
+
+  defp extract_error_message(nil), do: nil
+  defp extract_error_message(%{"message" => msg}) when is_binary(msg), do: msg
+  defp extract_error_message(msg) when is_binary(msg), do: msg
+  defp extract_error_message(other), do: inspect(other)
 end

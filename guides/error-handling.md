@@ -42,7 +42,7 @@ case GeminiCliSdk.run("Do something") do
     IO.puts(:stderr, "Run: gemini auth login")
 
   {:error, %GeminiCliSdk.Error{kind: :cli_not_found}} ->
-    IO.puts(:stderr, "Gemini CLI not found. Install it with: npm install -g @anthropic-ai/gemini")
+    IO.puts(:stderr, "Gemini CLI not found. Install it with: npm install -g @google/gemini-cli")
 
   {:error, %GeminiCliSdk.Error{kind: :command_timeout}} ->
     IO.puts(:stderr, "Request timed out. Try increasing timeout_ms.")

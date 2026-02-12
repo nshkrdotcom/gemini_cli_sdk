@@ -11,9 +11,11 @@ defmodule GeminiCliSdk.ArgBuilderTest do
       assert Enum.at(args, idx + 1) == "stream-json"
     end
 
-    test "includes --prompt flag when prompt is given" do
-      args = ArgBuilder.build_args(%Options{}, "hello")
-      assert "--prompt" in args
+    test "includes --prompt flag with actual prompt text" do
+      args = ArgBuilder.build_args(%Options{}, "hello world")
+      idx = Enum.find_index(args, &(&1 == "--prompt"))
+      assert idx != nil
+      assert Enum.at(args, idx + 1) == "hello world"
     end
 
     test "omits --prompt flag when prompt is nil" do

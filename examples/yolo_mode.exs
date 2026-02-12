@@ -15,6 +15,7 @@ IO.puts("=== YOLO Mode ===\n")
 IO.puts("Running with auto-approval enabled...\n")
 
 opts = %GeminiCliSdk.Options{
+  model: GeminiCliSdk.Models.fast_model(),
   yolo: true,
   timeout_ms: 120_000
 }
@@ -25,7 +26,7 @@ GeminiCliSdk.execute("Read the mix.exs file and tell me the project name and ver
     %Types.MessageEvent{role: "assistant", content: text} ->
       IO.write(text)
 
-    %Types.ToolUseEvent{name: name} ->
+    %Types.ToolUseEvent{tool_name: name} ->
       IO.puts(:stderr, "[auto-approved] #{name}")
 
     %Types.ResultEvent{status: status} ->

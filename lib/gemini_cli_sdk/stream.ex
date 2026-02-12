@@ -80,8 +80,8 @@ defmodule GeminiCliSdk.Stream do
     end
   end
 
-  defp init_transport(transport, prompt, transport_ref, temp_dir, timeout_ms) do
-    case send_initial_input(transport, prompt) do
+  defp init_transport(transport, _prompt, transport_ref, temp_dir, timeout_ms) do
+    case close_stdin(transport) do
       :ok ->
         %State{
           transport: transport,
@@ -96,10 +96,8 @@ defmodule GeminiCliSdk.Stream do
     end
   end
 
-  defp send_initial_input(transport, prompt) do
-    with :ok <- Erlexec.send(transport, prompt) do
-      Erlexec.end_input(transport)
-    end
+  defp close_stdin(transport) do
+    Erlexec.end_input(transport)
   catch
     :exit, reason -> {:error, {:transport_call_exit, reason}}
   end

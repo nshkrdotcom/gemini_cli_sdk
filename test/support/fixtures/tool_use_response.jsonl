@@ -1,4 +1,4 @@
-{"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-002","model":"gemini-3.0-pro"}
+{"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-002","model":"gemini-2.5-pro"}
 {"type":"message","role":"user","content":"list files in current directory","timestamp":"2026-02-11T12:00:01.000Z"}
 {"type":"tool_use","tool_name":"Bash","tool_id":"bash-001","parameters":{"command":"ls -la"},"timestamp":"2026-02-11T12:00:02.000Z"}
 {"type":"tool_result","tool_id":"bash-001","status":"success","output":"total 32\ndrwxr-xr-x  5 user user 4096 Feb 11 12:00 .\n-rw-r--r--  1 user user  256 Feb 11 11:00 README.md\n-rw-r--r--  1 user user 1024 Feb 11 11:30 mix.exs","timestamp":"2026-02-11T12:00:03.000Z"}

@@ -12,7 +12,9 @@ IO.puts("=== Error Handling ===\n")
 # 1. Normal success case
 IO.puts("--- Success Case ---")
 
-case GeminiCliSdk.run("Say hello in one word") do
+opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
+
+case GeminiCliSdk.run("Say hello in one word", opts) do
   {:ok, text} ->
     IO.puts("Success: #{text}")
 
@@ -25,7 +27,7 @@ IO.puts("")
 # 2. Timeout handling
 IO.puts("--- Short Timeout ---")
 
-short_opts = %GeminiCliSdk.Options{timeout_ms: 100}
+short_opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: 100}
 
 case GeminiCliSdk.run("Write a 10000 word essay", short_opts) do
   {:ok, text} ->
@@ -40,7 +42,7 @@ IO.puts("")
 # 3. Pattern matching on error kinds
 IO.puts("--- Error Kind Matching ---")
 
-case GeminiCliSdk.run("Hello") do
+case GeminiCliSdk.run("Hello", opts) do
   {:ok, text} ->
     IO.puts("Response: #{String.slice(text, 0, 100)}...")
 

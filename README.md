@@ -12,7 +12,7 @@
 
 # GeminiCliSdk
 
-An Elixir SDK for the [Gemini CLI](https://github.com/anthropics/gemini) -- build AI-powered applications with Google Gemini through a robust, idiomatic wrapper around the Gemini command-line interface.
+An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- build AI-powered applications with Google Gemini through a robust, idiomatic wrapper around the Gemini command-line interface.
 
 ## Features
 
@@ -36,7 +36,7 @@ def deps do
 end
 ```
 
-**Prerequisites**: The [Gemini CLI](https://github.com/anthropics/gemini) must be installed and authenticated.
+**Prerequisites**: The [Gemini CLI](https://github.com/google-gemini/gemini-cli) must be installed and authenticated.
 
 ## Quick Start
 
@@ -65,7 +65,7 @@ IO.puts(response)
 
 ```elixir
 opts = %GeminiCliSdk.Options{
-  model: "gemini-3.0-flash",
+  model: GeminiCliSdk.Models.fast_model(),
   yolo: true,
   timeout_ms: 60_000
 }

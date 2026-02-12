@@ -7,15 +7,15 @@ defmodule GeminiCliSdk.Models do
 
       # config/config.exs
       config :gemini_cli_sdk,
-        default_model: "gemini-3.0-pro",
-        fast_model: "gemini-3.0-flash"
+        default_model: "gemini-2.5-pro",
+        fast_model: "gemini-2.5-flash"
 
   ## Built-in Models
 
   | Function | Default | Description |
   |----------|---------|-------------|
-  | `default_model/0` | `"gemini-3.0-pro"` | Most capable model |
-  | `fast_model/0` | `"gemini-3.0-flash"` | Optimized for speed |
+  | `default_model/0` | `"gemini-2.5-pro"` | Most capable model |
+  | `fast_model/0` | `"gemini-2.5-flash"` | Optimized for speed |
 
   ## Aliases
 
@@ -29,8 +29,8 @@ defmodule GeminiCliSdk.Models do
   | `"fast"` | `fast_model()` |
   """
 
-  @default_model "gemini-3.0-pro"
-  @fast_model "gemini-3.0-flash"
+  @default_model "gemini-2.5-pro"
+  @fast_model "gemini-2.5-flash"
 
   @aliases %{
     "pro" => @default_model,
@@ -67,10 +67,10 @@ defmodule GeminiCliSdk.Models do
   ## Examples
 
       iex> GeminiCliSdk.Models.resolve("pro")
-      "gemini-3.0-pro"
+      "gemini-2.5-pro"
 
-      iex> GeminiCliSdk.Models.resolve("gemini-3.0-flash")
-      "gemini-3.0-flash"
+      iex> GeminiCliSdk.Models.resolve("gemini-2.5-flash")
+      "gemini-2.5-flash"
 
       iex> GeminiCliSdk.Models.resolve("custom-model")
       "custom-model"
@@ -88,7 +88,7 @@ defmodule GeminiCliSdk.Models do
 
   ## Examples
 
-      iex> GeminiCliSdk.Models.validate("gemini-3.0-pro")
+      iex> GeminiCliSdk.Models.validate("gemini-2.5-pro")
       :ok
 
       iex> GeminiCliSdk.Models.validate(nil)

@@ -4,12 +4,24 @@ The `GeminiCliSdk.Models` module is the single source of truth for model names
 throughout the SDK. It provides built-in defaults, aliases, validation, and
 runtime configuration.
 
-## Built-in Models
+## Available Models
+
+The Gemini CLI supports these models:
+
+| Model | Family | Description |
+|-------|--------|-------------|
+| `gemini-2.5-pro` | 2.5 (stable) | Most capable model for complex reasoning |
+| `gemini-2.5-flash` | 2.5 (stable) | Fast, balanced model for most tasks |
+| `gemini-2.5-flash-lite` | 2.5 (stable) | Fastest model for simple tasks |
+| `gemini-3-pro-preview` | 3 (preview) | Next-gen pro model (requires preview features) |
+| `gemini-3-flash-preview` | 3 (preview) | Next-gen flash model (requires preview features) |
+
+## Built-in Defaults
 
 | Function | Default Value | Description |
 |----------|---------------|-------------|
-| `Models.default_model/0` | `"gemini-3.0-pro"` | Most capable model |
-| `Models.fast_model/0` | `"gemini-3.0-flash"` | Optimized for speed and cost |
+| `Models.default_model/0` | `"gemini-2.5-pro"` | Most capable stable model |
+| `Models.fast_model/0` | `"gemini-2.5-flash"` | Optimized for speed and cost |
 
 ```elixir
 alias GeminiCliSdk.Models
@@ -22,7 +34,7 @@ opts = %GeminiCliSdk.Options{model: Models.fast_model()}
 
 # List all built-in models
 Models.available_models()
-# => ["gemini-3.0-pro", "gemini-3.0-flash"]
+# => ["gemini-2.5-pro", "gemini-2.5-flash"]
 ```
 
 ## Aliases
@@ -30,14 +42,14 @@ Models.available_models()
 Short aliases expand to full model names via `Models.resolve/1`:
 
 ```elixir
-Models.resolve("pro")     # => "gemini-3.0-pro"
-Models.resolve("flash")   # => "gemini-3.0-flash"
-Models.resolve("default") # => "gemini-3.0-pro"
-Models.resolve("fast")    # => "gemini-3.0-flash"
+Models.resolve("pro")     # => "gemini-2.5-pro"
+Models.resolve("flash")   # => "gemini-2.5-flash"
+Models.resolve("default") # => "gemini-2.5-pro"
+Models.resolve("fast")    # => "gemini-2.5-flash"
 
 # Unknown names pass through unchanged
-Models.resolve("gemini-3.0-pro-experimental")
-# => "gemini-3.0-pro-experimental"
+Models.resolve("gemini-3-pro-preview")
+# => "gemini-3-pro-preview"
 ```
 
 ## Using Custom Models
@@ -45,8 +57,8 @@ Models.resolve("gemini-3.0-pro-experimental")
 The SDK does not restrict you to known models. Any non-empty string is accepted:
 
 ```elixir
-# Use a model not yet in the SDK's built-in list
-opts = %GeminiCliSdk.Options{model: "gemini-3.0-pro-experimental"}
+# Use a preview model or any future model
+opts = %GeminiCliSdk.Options{model: "gemini-3-flash-preview"}
 {:ok, response} = GeminiCliSdk.run("Hello", opts)
 ```
 
@@ -56,7 +68,7 @@ without waiting for an SDK update.
 ## Validation
 
 ```elixir
-Models.validate("gemini-3.0-pro")  # => :ok
+Models.validate("gemini-2.5-pro")  # => :ok
 Models.validate(nil)                # => :ok (uses CLI default)
 Models.validate("")                 # => {:error, "Invalid model: ..."}
 Models.validate(123)                # => {:error, "Invalid model: ..."}
@@ -65,7 +77,7 @@ Models.validate(123)                # => {:error, "Invalid model: ..."}
 ## Checking Known Models
 
 ```elixir
-Models.known?("gemini-3.0-pro")   # => true
+Models.known?("gemini-2.5-pro")   # => true
 Models.known?("flash")             # => true (it's an alias)
 Models.known?("custom-model")      # => false
 ```
@@ -77,15 +89,15 @@ Override the default models via Application config without modifying SDK code:
 ```elixir
 # config/config.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-3.0-pro-experimental",
-  fast_model: "gemini-3.0-flash-lite"
+  default_model: "gemini-3-pro-preview",
+  fast_model: "gemini-2.5-flash-lite"
 ```
 
 After this configuration:
 
 ```elixir
-Models.default_model()  # => "gemini-3.0-pro-experimental"
-Models.fast_model()     # => "gemini-3.0-flash-lite"
+Models.default_model()  # => "gemini-3-pro-preview"
+Models.fast_model()     # => "gemini-2.5-flash-lite"
 ```
 
 ## Per-Environment Configuration
@@ -93,11 +105,11 @@ Models.fast_model()     # => "gemini-3.0-flash-lite"
 ```elixir
 # config/dev.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-3.0-flash"  # Use cheaper model in development
+  default_model: "gemini-2.5-flash"  # Use cheaper model in development
 
 # config/prod.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-3.0-pro"    # Use most capable in production
+  default_model: "gemini-2.5-pro"    # Use most capable in production
 ```
 
 ## Best Practices

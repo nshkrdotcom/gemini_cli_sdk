@@ -39,7 +39,7 @@ Stream.execute/2                -- returns Stream.resource/3
   |
   v
 Stream.start/2                  -- resolves CLI, builds args/env
-  |                                creates transport, sends prompt
+  |                                creates transport, closes stdin
   v
 Transport.Erlexec               -- GenServer managing erlexec
   |
@@ -92,7 +92,7 @@ The top-level module is a thin facade that delegates to internal modules. It pro
 
 The stream module uses `Stream.resource/3` with three callbacks:
 
-1. **start_fn**: Resolves the CLI binary, builds args and env, starts the transport GenServer, sends the prompt to stdin, and closes stdin.
+1. **start_fn**: Resolves the CLI binary, builds args (including `--prompt` with the prompt text) and env, starts the transport GenServer, and closes stdin.
 2. **next_fn**: Does selective receive on `{:gemini_sdk_transport, ref, event}` messages, parses JSONL lines, and yields typed event structs.
 3. **after_fn**: Force-closes the transport, flushes leftover messages from the mailbox, and cleans up any temporary settings files.
 
@@ -113,7 +113,14 @@ Defines the 6 event structs and the `parse_event/1` function that converts raw J
 
 ### `GeminiCliSdk.CLI`
 
-Resolves the `gemini` binary location. Checks `GEMINI_CLI_PATH` environment variable first, then falls back to `System.find_executable/1`.
+Resolves the `gemini` binary location using a 4-strategy waterfall:
+
+1. `GEMINI_CLI_PATH` environment variable (explicit path)
+2. `gemini` on system `PATH` (globally installed)
+3. npm global bin directory (`npm prefix -g`/bin/gemini)
+4. `npx` fallback (`npx --yes --package @google/gemini-cli gemini`)
+
+Set `GEMINI_NO_NPX=1` to disable the npx fallback. Returns a `CommandSpec` with `program` and `argv_prefix` (used by the npx strategy to prepend `["--yes", "--package", "@google/gemini-cli", "gemini"]`).
 
 ### `GeminiCliSdk.ArgBuilder`
 
