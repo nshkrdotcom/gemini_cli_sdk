@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0a1e"/>
+      <stop offset="50%" stop-color="#121535"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8AB4F8"/>
+      <stop offset="40%" stop-color="#669DF6"/>
+      <stop offset="70%" stop-color="#7C4DFF"/>
+      <stop offset="100%" stop-color="#B388FF"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/>
+      <stop offset="100%" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <linearGradient id="sparkle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8F0FE"/>
+      <stop offset="100%" stop-color="#8AB4F8"/>
+    </linearGradient>
+    <linearGradient id="sparkle2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D1C4E9"/>
+      <stop offset="100%" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <linearGradient id="arc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8AB4F8"/>
+      <stop offset="50%" stop-color="#669DF6"/>
+      <stop offset="100%" stop-color="#B388FF"/>
+    </linearGradient>
+    <linearGradient id="prompt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#B388FF"/>
+      <stop offset="100%" stop-color="#8AB4F8"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4285F4" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#4285F4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7C4DFF" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#669DF6" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#669DF6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
+    <filter id="tinyGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <clipPath id="hexClip">
+      <polygon points="100,4 183.14,52 183.14,148 100,196 16.86,148 16.86,52"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer hexagon with gradient fill and stroke -->
+  <polygon points="100,4 183.14,52 183.14,148 100,196 16.86,148 16.86,52"
+           fill="url(#bg)" stroke="url(#rim)" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Inner content clipped to hexagon -->
+  <g clip-path="url(#hexClip)">
+
+    <!-- Core ambient glow -->
+    <ellipse cx="100" cy="90" rx="70" ry="60" fill="url(#coreGlow)"/>
+
+    <!-- Subtle inner hexagon outlines -->
+    <polygon points="100,22 166,61 166,139 100,178 34,139 34,61"
+             fill="none" stroke="#8AB4F8" stroke-width="0.4" opacity="0.15"/>
+    <polygon points="100,38 150,70 150,130 100,162 50,130 50,70"
+             fill="none" stroke="#669DF6" stroke-width="0.3" opacity="0.1"/>
+
+    <!-- Geometric grid lines -->
+    <g opacity="0.06" stroke="#8AB4F8" stroke-width="0.5">
+      <line x1="100" y1="22" x2="100" y2="178"/>
+      <line x1="34" y1="100" x2="166" y2="100"/>
+      <line x1="67" y1="41.5" x2="133" y2="158.5"/>
+      <line x1="133" y1="41.5" x2="67" y2="158.5"/>
+    </g>
+
+    <!-- Circuit-like decorative lines -->
+    <g stroke="#669DF6" stroke-width="0.5" opacity="0.12" fill="none">
+      <path d="M34,61 L50,70 L50,85"/>
+      <path d="M166,61 L150,70 L150,85"/>
+      <path d="M34,139 L50,130 L50,118"/>
+      <path d="M166,139 L150,130 L150,118"/>
+    </g>
+
+    <!-- Glow halos behind stars -->
+    <circle cx="68" cy="85" r="22" fill="url(#glow1)" filter="url(#softGlow)"/>
+    <circle cx="132" cy="85" r="22" fill="url(#glow2)" filter="url(#softGlow)"/>
+
+    <!-- Left Gemini sparkle (4-pointed star with concave curves) -->
+    <g filter="url(#glow)" transform="translate(68,85)">
+      <path d="M0,-18 Q4,-4 18,0 Q4,4 0,18 Q-4,4 -18,0 Q-4,-4 0,-18Z"
+            fill="url(#sparkle)" opacity="0.95"/>
+      <path d="M0,-10 Q2,-2 10,0 Q2,2 0,10 Q-2,2 -10,0 Q-2,-2 0,-10Z"
+            fill="white" opacity="0.3"/>
+    </g>
+
+    <!-- Right Gemini sparkle -->
+    <g filter="url(#glow)" transform="translate(132,85)">
+      <path d="M0,-18 Q4,-4 18,0 Q4,4 0,18 Q-4,4 -18,0 Q-4,-4 0,-18Z"
+            fill="url(#sparkle2)" opacity="0.95"/>
+      <path d="M0,-10 Q2,-2 10,0 Q2,2 0,10 Q-2,2 -10,0 Q-2,-2 0,-10Z"
+            fill="white" opacity="0.3"/>
+    </g>
+
+    <!-- Connecting arcs between twin stars (Gemini bond) -->
+    <path d="M78,82 C92,66 108,66 122,82" fill="none" stroke="url(#arc)"
+          stroke-width="1.5" opacity="0.5" stroke-linecap="round"/>
+    <path d="M78,88 C92,104 108,104 122,88" fill="none" stroke="url(#arc)"
+          stroke-width="1.2" opacity="0.35" stroke-linecap="round"/>
+
+    <!-- Small orbital dots on arcs -->
+    <circle cx="100" cy="68" r="1.5" fill="#8AB4F8" opacity="0.6" filter="url(#tinyGlow)"/>
+    <circle cx="100" cy="102" r="1.2" fill="#B388FF" opacity="0.45" filter="url(#tinyGlow)"/>
+
+    <!-- Central diamond between stars -->
+    <path d="M100,78 L104,85 L100,92 L96,85Z" fill="url(#accent)" opacity="0.25"/>
+
+    <!-- CLI terminal prompt: >_ -->
+    <g transform="translate(100,140)" filter="url(#tinyGlow)">
+      <path d="M-22,-9 L-11,0 L-22,9" fill="none" stroke="url(#prompt)"
+            stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+      <line x1="-5" y1="9" x2="22" y2="9" stroke="#8AB4F8" stroke-width="2.2"
+            stroke-linecap="round" opacity="0.7">
+        <animate attributeName="opacity" values="0.7;0.25;0.7" dur="1.8s" repeatCount="indefinite"/>
+      </line>
+    </g>
+
+    <!-- Vertex accent dots -->
+    <g fill="#8AB4F8" opacity="0.35">
+      <circle cx="100" cy="22" r="2"/>
+      <circle cx="166" cy="61" r="2"/>
+      <circle cx="166" cy="139" r="2"/>
+      <circle cx="100" cy="178" r="2"/>
+      <circle cx="34" cy="139" r="2"/>
+      <circle cx="34" cy="61" r="2"/>
+    </g>
+
+    <!-- Scattered micro-stars -->
+    <g opacity="0.25" filter="url(#tinyGlow)">
+      <circle cx="48" cy="68" r="0.8" fill="#8AB4F8"/>
+      <circle cx="152" cy="68" r="0.8" fill="#B388FF"/>
+      <circle cx="45" cy="128" r="0.7" fill="#669DF6"/>
+      <circle cx="155" cy="128" r="0.7" fill="#669DF6"/>
+      <circle cx="80" cy="48" r="0.6" fill="#8AB4F8"/>
+      <circle cx="120" cy="48" r="0.6" fill="#B388FF"/>
+      <circle cx="75" cy="162" r="0.6" fill="#669DF6"/>
+      <circle cx="125" cy="162" r="0.6" fill="#8AB4F8"/>
+    </g>
+
+  </g>
+</svg>
