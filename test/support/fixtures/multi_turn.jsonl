@@ -1,0 +1,10 @@
+{"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-004","model":"gemini-2.5-pro"}
+{"type":"message","role":"user","content":"Create a hello world file","timestamp":"2026-02-11T12:00:01.000Z"}
+{"type":"message","role":"assistant","content":"I'll create a hello world file for you.","delta":true,"timestamp":"2026-02-11T12:00:02.000Z"}
+{"type":"tool_use","tool_name":"Bash","tool_id":"bash-010","parameters":{"command":"echo 'Hello, World!' > hello.txt"},"timestamp":"2026-02-11T12:00:03.000Z"}
+{"type":"tool_result","tool_id":"bash-010","status":"success","output":"","timestamp":"2026-02-11T12:00:04.000Z"}
+{"type":"message","role":"assistant","content":"I've created `hello.txt` with the content \"Hello, World!\". ","delta":true,"timestamp":"2026-02-11T12:00:05.000Z"}
+{"type":"tool_use","tool_name":"Bash","tool_id":"bash-011","parameters":{"command":"cat hello.txt"},"timestamp":"2026-02-11T12:00:06.000Z"}
+{"type":"tool_result","tool_id":"bash-011","status":"success","output":"Hello, World!","timestamp":"2026-02-11T12:00:07.000Z"}
+{"type":"message","role":"assistant","content":"Verified -- the file contains:\n\n```\nHello, World!\n```","delta":true,"timestamp":"2026-02-11T12:00:08.000Z"}
+{"type":"result","status":"success","stats":{"total_tokens":620,"input_tokens":180,"output_tokens":440,"duration_ms":7500,"tool_calls":2},"timestamp":"2026-02-11T12:00:09.000Z"}

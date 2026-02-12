@@ -22,7 +22,8 @@ defmodule GeminiCliSdk.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {GeminiCliSdk.Application, []}
     ]
   end
 
@@ -40,6 +41,7 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
+      {:erlexec, "~> 2.0"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
@@ -70,14 +72,63 @@ defmodule GeminiCliSdk.MixProject do
       logo: "assets/gemini_cli_sdk.svg",
       extras: [
         "README.md",
+        "guides/getting-started.md",
+        "guides/streaming.md",
+        "guides/synchronous.md",
+        "guides/options.md",
+        "guides/sessions.md",
+        "guides/error-handling.md",
+        "guides/architecture.md",
+        "guides/testing.md",
         "CHANGELOG.md",
         "LICENSE"
       ],
       groups_for_extras: [
-        "Getting Started": [
-          "README.md"
+        Introduction: [
+          "README.md",
+          "guides/getting-started.md"
+        ],
+        Guides: [
+          "guides/streaming.md",
+          "guides/synchronous.md",
+          "guides/options.md",
+          "guides/sessions.md",
+          "guides/error-handling.md"
+        ],
+        Advanced: [
+          "guides/architecture.md",
+          "guides/testing.md"
         ],
         "Release Notes": ["CHANGELOG.md", "LICENSE"]
+      ],
+      groups_for_modules: [
+        "Public API": [GeminiCliSdk],
+        Types: [
+          GeminiCliSdk.Types,
+          GeminiCliSdk.Types.InitEvent,
+          GeminiCliSdk.Types.MessageEvent,
+          GeminiCliSdk.Types.ToolUseEvent,
+          GeminiCliSdk.Types.ToolResultEvent,
+          GeminiCliSdk.Types.ErrorEvent,
+          GeminiCliSdk.Types.ResultEvent,
+          GeminiCliSdk.Types.Stats
+        ],
+        Errors: [GeminiCliSdk.Error],
+        Configuration: [
+          GeminiCliSdk.Options,
+          GeminiCliSdk.CLI,
+          GeminiCliSdk.ArgBuilder,
+          GeminiCliSdk.Env,
+          GeminiCliSdk.Config
+        ],
+        Internals: [
+          GeminiCliSdk.Stream,
+          GeminiCliSdk.Command,
+          GeminiCliSdk.Session,
+          GeminiCliSdk.Transport,
+          GeminiCliSdk.Transport.Erlexec,
+          GeminiCliSdk.Exec
+        ]
       ],
       before_closing_head_tag: &before_closing_head_tag/1,
       before_closing_body_tag: &before_closing_body_tag/1

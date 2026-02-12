@@ -1,0 +1,86 @@
+defmodule GeminiCliSdk.OptionsTest do
+  use ExUnit.Case, async: true
+
+  alias GeminiCliSdk.Options
+
+  describe "struct defaults" do
+    test "has sensible defaults" do
+      opts = %Options{}
+      assert opts.model == nil
+      assert opts.yolo == false
+      assert opts.approval_mode == nil
+      assert opts.sandbox == false
+      assert opts.resume == nil
+      assert opts.extensions == []
+      assert opts.include_directories == []
+      assert opts.allowed_tools == []
+      assert opts.allowed_mcp_server_names == []
+      assert opts.debug == false
+      assert opts.output_format == "stream-json"
+      assert opts.cwd == nil
+      assert opts.env == %{}
+      assert opts.settings == nil
+      assert opts.system_prompt == nil
+      assert opts.timeout_ms == 300_000
+    end
+  end
+
+  describe "validate!/1" do
+    test "returns opts unchanged when valid" do
+      opts = %Options{model: "gemini-2.5-flash"}
+      assert ^opts = Options.validate!(opts)
+    end
+
+    test "raises when yolo and approval_mode are both set" do
+      opts = %Options{yolo: true, approval_mode: :yolo}
+
+      assert_raise ArgumentError, ~r/Cannot set both/, fn ->
+        Options.validate!(opts)
+      end
+    end
+
+    test "raises for invalid approval_mode" do
+      opts = %Options{approval_mode: :invalid_mode}
+
+      assert_raise ArgumentError, ~r/Invalid approval_mode/, fn ->
+        Options.validate!(opts)
+      end
+    end
+
+    test "allows valid approval_modes" do
+      for mode <- [:default, :auto_edit, :yolo, :plan] do
+        opts = %Options{approval_mode: mode}
+        assert ^opts = Options.validate!(opts)
+      end
+    end
+
+    test "raises when include_directories exceeds 5" do
+      opts = %Options{include_directories: Enum.map(1..6, &"dir#{&1}")}
+
+      assert_raise ArgumentError, ~r/Maximum 5/, fn ->
+        Options.validate!(opts)
+      end
+    end
+
+    test "allows up to 5 include_directories" do
+      opts = %Options{include_directories: Enum.map(1..5, &"dir#{&1}")}
+      assert ^opts = Options.validate!(opts)
+    end
+
+    test "raises when timeout_ms is not positive" do
+      opts = %Options{timeout_ms: 0}
+
+      assert_raise ArgumentError, ~r/timeout_ms must be positive/, fn ->
+        Options.validate!(opts)
+      end
+    end
+
+    test "raises when timeout_ms is negative" do
+      opts = %Options{timeout_ms: -1}
+
+      assert_raise ArgumentError, ~r/timeout_ms must be positive/, fn ->
+        Options.validate!(opts)
+      end
+    end
+  end
+end
