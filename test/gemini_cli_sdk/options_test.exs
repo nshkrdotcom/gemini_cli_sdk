@@ -1,7 +1,7 @@
 defmodule GeminiCliSdk.OptionsTest do
   use ExUnit.Case, async: true
 
-  alias GeminiCliSdk.Options
+  alias GeminiCliSdk.{Configuration, Models, Options}
 
   describe "struct defaults" do
     test "has sensible defaults" do
@@ -21,13 +21,13 @@ defmodule GeminiCliSdk.OptionsTest do
       assert opts.env == %{}
       assert opts.settings == nil
       assert opts.system_prompt == nil
-      assert opts.timeout_ms == 300_000
+      assert opts.timeout_ms == Configuration.default_timeout_ms()
     end
   end
 
   describe "validate!/1" do
     test "returns opts unchanged when valid" do
-      opts = %Options{model: "gemini-2.5-flash"}
+      opts = %Options{model: Models.fast_model()}
       assert ^opts = Options.validate!(opts)
     end
 
@@ -57,7 +57,7 @@ defmodule GeminiCliSdk.OptionsTest do
     test "raises when include_directories exceeds 5" do
       opts = %Options{include_directories: Enum.map(1..6, &"dir#{&1}")}
 
-      assert_raise ArgumentError, ~r/Maximum 5/, fn ->
+      assert_raise ArgumentError, ~r/Maximum #{Configuration.max_include_directories()}/, fn ->
         Options.validate!(opts)
       end
     end

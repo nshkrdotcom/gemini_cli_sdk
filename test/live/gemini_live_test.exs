@@ -12,7 +12,7 @@ defmodule GeminiCliSdk.LiveTest do
   """
   use ExUnit.Case, async: false
 
-  alias GeminiCliSdk.{Error, Options, Types}
+  alias GeminiCliSdk.{Error, Models, Options, Types}
 
   @moduletag :live
 
@@ -37,7 +37,7 @@ defmodule GeminiCliSdk.LiveTest do
 
     test "respects model option" do
       opts = %Options{
-        model: "gemini-2.5-flash",
+        model: Models.fast_model(),
         timeout_ms: @live_timeout_ms
       }
 
@@ -66,7 +66,7 @@ defmodule GeminiCliSdk.LiveTest do
       assistant_msgs =
         Enum.filter(events, &match?(%Types.MessageEvent{role: "assistant"}, &1))
 
-      assert length(assistant_msgs) >= 1
+      assert assistant_msgs != []
     end
 
     test "stream can be halted early without error" do

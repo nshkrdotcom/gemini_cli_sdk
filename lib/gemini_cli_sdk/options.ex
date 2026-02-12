@@ -6,7 +6,9 @@ defmodule GeminiCliSdk.Options do
   setting. Fields with `nil` default are omitted from the generated argument list.
   """
 
-  @default_timeout_ms 300_000
+  alias GeminiCliSdk.Configuration
+
+  @default_timeout_ms Configuration.default_timeout_ms()
 
   @type approval_mode :: :default | :auto_edit | :yolo | :plan
   @type resume_value :: boolean() | String.t() | nil
@@ -62,9 +64,9 @@ defmodule GeminiCliSdk.Options do
               "Invalid approval_mode: #{inspect(opts.approval_mode)}. " <>
                 "Must be one of: #{inspect(@valid_approval_modes)}"
 
-      length(opts.include_directories) > 5 ->
+      length(opts.include_directories) > Configuration.max_include_directories() ->
         raise ArgumentError,
-              "Maximum 5 include_directories allowed, got #{length(opts.include_directories)}"
+              "Maximum #{Configuration.max_include_directories()} include_directories allowed, got #{length(opts.include_directories)}"
 
       opts.timeout_ms <= 0 ->
         raise ArgumentError,

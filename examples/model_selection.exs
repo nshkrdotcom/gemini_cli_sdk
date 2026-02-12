@@ -7,7 +7,7 @@
 
 IO.puts("=== Model Selection ===\n")
 
-models = ["gemini-2.5-flash", "gemini-2.5-pro"]
+models = GeminiCliSdk.Models.available_models()
 
 for model <- models do
   IO.puts("--- #{model} ---")

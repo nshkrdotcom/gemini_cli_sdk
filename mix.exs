@@ -76,6 +76,8 @@ defmodule GeminiCliSdk.MixProject do
         "guides/streaming.md",
         "guides/synchronous.md",
         "guides/options.md",
+        "guides/models.md",
+        "guides/configuration.md",
         "guides/sessions.md",
         "guides/error-handling.md",
         "guides/architecture.md",
@@ -92,6 +94,8 @@ defmodule GeminiCliSdk.MixProject do
           "guides/streaming.md",
           "guides/synchronous.md",
           "guides/options.md",
+          "guides/models.md",
+          "guides/configuration.md",
           "guides/sessions.md",
           "guides/error-handling.md"
         ],
@@ -116,6 +120,8 @@ defmodule GeminiCliSdk.MixProject do
         Errors: [GeminiCliSdk.Error],
         Configuration: [
           GeminiCliSdk.Options,
+          GeminiCliSdk.Models,
+          GeminiCliSdk.Configuration,
           GeminiCliSdk.CLI,
           GeminiCliSdk.ArgBuilder,
           GeminiCliSdk.Env,

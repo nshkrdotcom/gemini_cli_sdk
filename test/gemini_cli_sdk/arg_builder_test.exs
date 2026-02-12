@@ -1,8 +1,7 @@
 defmodule GeminiCliSdk.ArgBuilderTest do
   use ExUnit.Case, async: true
 
-  alias GeminiCliSdk.ArgBuilder
-  alias GeminiCliSdk.Options
+  alias GeminiCliSdk.{ArgBuilder, Models, Options}
 
   describe "build_args/2" do
     test "default options produce output-format stream-json" do
@@ -23,10 +22,10 @@ defmodule GeminiCliSdk.ArgBuilderTest do
     end
 
     test "includes --model flag" do
-      args = ArgBuilder.build_args(%Options{model: "gemini-2.5-flash"})
+      args = ArgBuilder.build_args(%Options{model: Models.fast_model()})
       idx = Enum.find_index(args, &(&1 == "--model"))
       assert idx != nil
-      assert Enum.at(args, idx + 1) == "gemini-2.5-flash"
+      assert Enum.at(args, idx + 1) == Models.fast_model()
     end
 
     test "omits --model when nil" do
@@ -151,7 +150,7 @@ defmodule GeminiCliSdk.ArgBuilderTest do
       args =
         ArgBuilder.build_args(
           %Options{
-            model: "gemini-2.5-pro",
+            model: Models.default_model(),
             sandbox: true,
             debug: true,
             yolo: true

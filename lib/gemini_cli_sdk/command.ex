@@ -1,11 +1,11 @@
 defmodule GeminiCliSdk.Command do
   @moduledoc "Synchronous command execution against the Gemini CLI."
 
-  alias GeminiCliSdk.{CLI, Defaults, Env, Error, Exec}
+  alias GeminiCliSdk.{CLI, Configuration, Env, Error, Exec}
   alias GeminiCliSdk.CLI.CommandSpec
 
-  @stop_wait_ms 200
-  @kill_wait_ms 500
+  @stop_wait_ms Configuration.command_stop_wait_ms()
+  @kill_wait_ms Configuration.command_kill_wait_ms()
 
   @type run_opt ::
           {:timeout, non_neg_integer() | :infinity}
@@ -23,7 +23,7 @@ defmodule GeminiCliSdk.Command do
   @spec run(CommandSpec.t(), [String.t()], [run_opt()]) ::
           {:ok, String.t()} | {:error, Error.t()}
   def run(%CommandSpec{} = command, args, opts) when is_list(args) and is_list(opts) do
-    timeout = Keyword.get(opts, :timeout, Defaults.command_timeout_ms())
+    timeout = Keyword.get(opts, :timeout, Configuration.command_timeout_ms())
 
     command_args = CLI.command_args(command, args)
     env = Env.build_cli_env(normalize_env(Keyword.get(opts, :env)))

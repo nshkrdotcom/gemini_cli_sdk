@@ -5,17 +5,17 @@ defmodule GeminiCliSdk.Transport.Erlexec do
 
   import Kernel, except: [send: 2]
 
-  alias GeminiCliSdk.{Defaults, Exec}
+  alias GeminiCliSdk.{Configuration, Exec}
 
   @behaviour GeminiCliSdk.Transport
 
-  @default_max_buffer_size Defaults.max_buffer_size()
-  @default_max_stderr_buffer_size Defaults.max_stderr_buffer_size()
-  @default_call_timeout Defaults.transport_call_timeout_ms()
-  @force_close_timeout Defaults.transport_force_close_timeout_ms()
-  @default_headless_timeout_ms Defaults.transport_headless_timeout_ms()
-  @finalize_delay_ms 25
-  @max_lines_per_batch 200
+  @default_max_buffer_size Configuration.max_buffer_size()
+  @default_max_stderr_buffer_size Configuration.max_stderr_buffer_size()
+  @default_call_timeout Configuration.transport_call_timeout_ms()
+  @force_close_timeout Configuration.transport_force_close_timeout_ms()
+  @default_headless_timeout_ms Configuration.transport_headless_timeout_ms()
+  @finalize_delay_ms Configuration.finalize_delay_ms()
+  @max_lines_per_batch Configuration.max_lines_per_batch()
 
   defstruct subprocess: nil,
             subscribers: %{},
@@ -124,19 +124,17 @@ defmodule GeminiCliSdk.Transport.Erlexec do
     subscriber = Keyword.get(opts, :subscriber)
     headless_timeout_ms = Keyword.get(opts, :headless_timeout_ms, @default_headless_timeout_ms)
 
-    with {:ok, state} <-
-           start_subprocess(command, args,
-             cwd: cwd,
-             env: env,
-             subscriber: subscriber,
-             headless_timeout_ms: headless_timeout_ms,
-             task_supervisor: task_supervisor,
-             max_buffer_size: Keyword.get(opts, :max_buffer_size, @default_max_buffer_size),
-             max_stderr_buffer_size:
-               Keyword.get(opts, :max_stderr_buffer_size, @default_max_stderr_buffer_size)
-           ) do
-      {:ok, state}
-    else
+    case start_subprocess(command, args,
+           cwd: cwd,
+           env: env,
+           subscriber: subscriber,
+           headless_timeout_ms: headless_timeout_ms,
+           task_supervisor: task_supervisor,
+           max_buffer_size: Keyword.get(opts, :max_buffer_size, @default_max_buffer_size),
+           max_stderr_buffer_size:
+             Keyword.get(opts, :max_stderr_buffer_size, @default_max_stderr_buffer_size)
+         ) do
+      {:ok, state} -> {:ok, state}
       {:error, reason} -> {:stop, reason}
     end
   end
@@ -310,6 +308,7 @@ defmodule GeminiCliSdk.Transport.Erlexec do
 
   defp safe_call(transport, message, timeout \\ @default_call_timeout)
 
+  @dialyzer {:no_opaque, safe_call: 3}
   defp safe_call(transport, message, timeout)
        when is_pid(transport) and is_integer(timeout) and timeout >= 0 do
     task =

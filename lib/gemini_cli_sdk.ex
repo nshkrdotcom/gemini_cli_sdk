@@ -7,7 +7,7 @@ defmodule GeminiCliSdk do
 
   ## Streaming
 
-      GeminiCliSdk.execute("Explain OTP", %GeminiCliSdk.Options{model: "gemini-2.5-flash"})
+      GeminiCliSdk.execute("Explain OTP", %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()})
       |> Enum.each(fn event ->
         case event do
           %GeminiCliSdk.Types.MessageEvent{role: "assistant", content: text} ->

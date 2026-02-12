@@ -1,15 +1,16 @@
 defmodule GeminiCliSdk.Stream do
   @moduledoc "Lazy streaming execution of Gemini CLI prompts via `Stream.resource/3`."
 
-  alias GeminiCliSdk.{ArgBuilder, CLI, Config, Env, Error, Types}
-  alias GeminiCliSdk.Transport.Erlexec
+  alias GeminiCliSdk.{ArgBuilder, CLI, Config, Configuration, Env, Error, Types}
   alias GeminiCliSdk.Options
+  alias GeminiCliSdk.Transport.Erlexec
 
-  @transport_close_grace_ms 2_000
+  @transport_close_grace_ms Configuration.transport_close_grace_ms()
+  @transport_kill_grace_ms Configuration.transport_kill_grace_ms()
 
   defmodule State do
     @moduledoc false
-    @default_receive_timeout_ms GeminiCliSdk.Defaults.stream_timeout_ms()
+    @default_receive_timeout_ms GeminiCliSdk.Configuration.stream_timeout_ms()
 
     @enforce_keys [:transport, :transport_ref, :receive_timeout_ms]
     defstruct transport: nil,
@@ -41,58 +42,63 @@ defmodule GeminiCliSdk.Stream do
   end
 
   defp start(prompt, %Options{} = options) do
-    try do
-      with {:ok, command} <- CLI.resolve(),
-           {:ok, settings_path, temp_dir} <- build_settings_file(options) do
-        args = build_args(options, prompt, settings_path)
-        full_args = CLI.command_args(command, args)
-        env = build_env(options)
-        cwd = options.cwd || File.cwd!()
-        transport_ref = make_ref()
+    with {:ok, command} <- CLI.resolve(),
+         {:ok, settings_path, temp_dir} <- build_settings_file(options) do
+      start_transport(command, prompt, options, settings_path, temp_dir)
+    else
+      {:error, reason} ->
+        {:error, Error.normalize(reason, kind: :stream_start_failed)}
+    end
+  rescue
+    error ->
+      {:error, Error.normalize(error, kind: :stream_start_failed)}
+  catch
+    :exit, reason ->
+      {:error, Error.normalize(reason, kind: :stream_start_failed)}
+  end
 
-        case Erlexec.start(
-               command: command.program,
-               args: full_args,
-               cwd: cwd,
-               env: Enum.to_list(env),
-               subscriber: {self(), transport_ref}
-             ) do
-          {:ok, transport} ->
-            case send_initial_input(transport, prompt) do
-              :ok ->
-                %State{
-                  transport: transport,
-                  transport_ref: transport_ref,
-                  temp_dir: temp_dir,
-                  receive_timeout_ms: options.timeout_ms
-                }
+  defp start_transport(command, prompt, options, settings_path, temp_dir) do
+    args = build_args(options, prompt, settings_path)
+    full_args = CLI.command_args(command, args)
+    env = build_env(options)
+    cwd = options.cwd || File.cwd!()
+    transport_ref = make_ref()
 
-              {:error, reason} ->
-                cleanup_start_resources(transport, temp_dir)
-                {:error, Error.normalize(reason, kind: :stream_start_failed)}
-            end
+    case Erlexec.start(
+           command: command.program,
+           args: full_args,
+           cwd: cwd,
+           env: Enum.to_list(env),
+           subscriber: {self(), transport_ref}
+         ) do
+      {:ok, transport} ->
+        init_transport(transport, prompt, transport_ref, temp_dir, options.timeout_ms)
 
-          {:error, reason} ->
-            cleanup_temp_dir(temp_dir)
-            {:error, Error.normalize(reason, kind: :stream_start_failed)}
-        end
-      else
-        {:error, reason} ->
-          {:error, Error.normalize(reason, kind: :stream_start_failed)}
-      end
-    rescue
-      error ->
-        {:error, Error.normalize(error, kind: :stream_start_failed)}
-    catch
-      :exit, reason ->
+      {:error, reason} ->
+        cleanup_temp_dir(temp_dir)
+        {:error, Error.normalize(reason, kind: :stream_start_failed)}
+    end
+  end
+
+  defp init_transport(transport, prompt, transport_ref, temp_dir, timeout_ms) do
+    case send_initial_input(transport, prompt) do
+      :ok ->
+        %State{
+          transport: transport,
+          transport_ref: transport_ref,
+          temp_dir: temp_dir,
+          receive_timeout_ms: timeout_ms
+        }
+
+      {:error, reason} ->
+        cleanup_start_resources(transport, temp_dir)
         {:error, Error.normalize(reason, kind: :stream_start_failed)}
     end
   end
 
   defp send_initial_input(transport, prompt) do
-    with :ok <- Erlexec.send(transport, prompt),
-         :ok <- Erlexec.end_input(transport) do
-      :ok
+    with :ok <- Erlexec.send(transport, prompt) do
+      Erlexec.end_input(transport)
     end
   catch
     :exit, reason -> {:error, {:transport_call_exit, reason}}
@@ -233,7 +239,7 @@ defmodule GeminiCliSdk.Stream do
     after
       timeout_ms ->
         safe_shutdown(transport)
-        await_down_or_kill(ref, transport, 250)
+        await_down_or_kill(ref, transport, @transport_kill_grace_ms)
     end
   end
 
@@ -243,7 +249,7 @@ defmodule GeminiCliSdk.Stream do
     after
       timeout_ms ->
         safe_kill(transport)
-        await_down_or_demonitor(ref, 250)
+        await_down_or_demonitor(ref, @transport_kill_grace_ms)
     end
   end
 
@@ -262,8 +268,6 @@ defmodule GeminiCliSdk.Stream do
   catch
     :exit, _ -> :ok
   end
-
-  defp safe_close(_), do: :ok
 
   defp safe_force_close(transport) when is_pid(transport) do
     Erlexec.force_close(transport)
@@ -308,7 +312,7 @@ defmodule GeminiCliSdk.Stream do
   defp maybe_add_settings(args, path), do: args ++ ["--settings-file", path]
 
   defp build_env(%Options{env: env, system_prompt: system_prompt}) do
-    base = Env.build_cli_env(env || %{})
+    base = Env.build_cli_env(env)
 
     if system_prompt do
       Map.put(base, "GEMINI_SYSTEM_MD", system_prompt)

@@ -1,4 +1,4 @@
-{"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-004","model":"gemini-2.5-pro"}
+{"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-004","model":"gemini-3.0-pro"}
 {"type":"message","role":"user","content":"Create a hello world file","timestamp":"2026-02-11T12:00:01.000Z"}
 {"type":"message","role":"assistant","content":"I'll create a hello world file for you.","delta":true,"timestamp":"2026-02-11T12:00:02.000Z"}
 {"type":"tool_use","tool_name":"Bash","tool_id":"bash-010","parameters":{"command":"echo 'Hello, World!' > hello.txt"},"timestamp":"2026-02-11T12:00:03.000Z"}

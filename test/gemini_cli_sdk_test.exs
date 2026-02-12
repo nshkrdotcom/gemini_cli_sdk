@@ -82,7 +82,7 @@ defmodule GeminiCliSdkTest do
             })
             |> Enum.to_list()
 
-          assert length(events) >= 1
+          assert events != []
           last = List.last(events)
           assert %Types.ErrorEvent{} = last
           assert last.message =~ "Timed out"

@@ -98,8 +98,8 @@ defmodule GeminiCliSdk.StreamTest do
           tool_uses = Enum.filter(events, &match?(%Types.ToolUseEvent{}, &1))
           tool_results = Enum.filter(events, &match?(%Types.ToolResultEvent{}, &1))
 
-          assert length(tool_uses) >= 1
-          assert length(tool_results) >= 1
+          assert tool_uses != []
+          assert tool_results != []
 
           use_idx = Enum.find_index(events, &match?(%Types.ToolUseEvent{}, &1))
           result_idx = Enum.find_index(events, &match?(%Types.ToolResultEvent{}, &1))
@@ -130,7 +130,7 @@ defmodule GeminiCliSdk.StreamTest do
             |> Enum.to_list()
 
           error_events = Enum.filter(events, &match?(%Types.ErrorEvent{}, &1))
-          assert length(error_events) >= 1
+          assert error_events != []
         end)
       after
         File.rm_rf(dir)
@@ -152,7 +152,7 @@ defmodule GeminiCliSdk.StreamTest do
             })
             |> Enum.to_list()
 
-          assert length(events) >= 1
+          assert events != []
           last = List.last(events)
           assert %Types.ErrorEvent{} = last
           assert last.message =~ "Timed out"

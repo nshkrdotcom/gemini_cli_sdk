@@ -1,0 +1,112 @@
+defmodule GeminiCliSdk.Models do
+  @moduledoc """
+  Centralized model name constants and helpers.
+
+  All model references throughout the SDK flow through this module.
+  Override defaults via Application configuration:
+
+      # config/config.exs
+      config :gemini_cli_sdk,
+        default_model: "gemini-3.0-pro",
+        fast_model: "gemini-3.0-flash"
+
+  ## Built-in Models
+
+  | Function | Default | Description |
+  |----------|---------|-------------|
+  | `default_model/0` | `"gemini-3.0-pro"` | Most capable model |
+  | `fast_model/0` | `"gemini-3.0-flash"` | Optimized for speed |
+
+  ## Aliases
+
+  Short aliases expand to full model names via `resolve/1`:
+
+  | Alias | Resolves To |
+  |-------|-------------|
+  | `"pro"` | `default_model()` |
+  | `"default"` | `default_model()` |
+  | `"flash"` | `fast_model()` |
+  | `"fast"` | `fast_model()` |
+  """
+
+  @default_model "gemini-3.0-pro"
+  @fast_model "gemini-3.0-flash"
+
+  @aliases %{
+    "pro" => @default_model,
+    "flash" => @fast_model,
+    "default" => @default_model,
+    "fast" => @fast_model
+  }
+
+  @doc "Returns the default (most capable) model name."
+  @spec default_model() :: String.t()
+  def default_model do
+    Application.get_env(:gemini_cli_sdk, :default_model, @default_model)
+  end
+
+  @doc "Returns the fast model name, optimized for speed."
+  @spec fast_model() :: String.t()
+  def fast_model do
+    Application.get_env(:gemini_cli_sdk, :fast_model, @fast_model)
+  end
+
+  @doc "Returns a list of all built-in model identifiers."
+  @spec available_models() :: [String.t()]
+  def available_models do
+    [default_model(), fast_model()]
+    |> Enum.uniq()
+  end
+
+  @doc """
+  Resolves a model name, expanding aliases.
+
+  Accepts full model names as-is, or aliases like `"pro"`, `"flash"`,
+  `"default"`, `"fast"`.
+
+  ## Examples
+
+      iex> GeminiCliSdk.Models.resolve("pro")
+      "gemini-3.0-pro"
+
+      iex> GeminiCliSdk.Models.resolve("gemini-3.0-flash")
+      "gemini-3.0-flash"
+
+      iex> GeminiCliSdk.Models.resolve("custom-model")
+      "custom-model"
+  """
+  @spec resolve(String.t()) :: String.t()
+  def resolve(name) when is_binary(name) do
+    Map.get(@aliases, name, name)
+  end
+
+  @doc """
+  Validates a model value.
+
+  Accepts any non-empty binary string or `nil` (meaning use CLI default).
+  Does not restrict to known models -- new models work without SDK updates.
+
+  ## Examples
+
+      iex> GeminiCliSdk.Models.validate("gemini-3.0-pro")
+      :ok
+
+      iex> GeminiCliSdk.Models.validate(nil)
+      :ok
+
+      iex> GeminiCliSdk.Models.validate(123)
+      {:error, "Invalid model: 123. Must be a non-empty string or nil."}
+  """
+  @spec validate(term()) :: :ok | {:error, String.t()}
+  def validate(model) when is_binary(model) and byte_size(model) > 0, do: :ok
+  def validate(nil), do: :ok
+
+  def validate(model),
+    do: {:error, "Invalid model: #{inspect(model)}. Must be a non-empty string or nil."}
+
+  @doc "Returns `true` if the model name is a known built-in model or alias."
+  @spec known?(String.t()) :: boolean()
+  def known?(model) when is_binary(model) do
+    model in available_models() or Map.has_key?(@aliases, model)
+  end
+end

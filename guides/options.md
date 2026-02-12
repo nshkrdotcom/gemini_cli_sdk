@@ -6,7 +6,7 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 %GeminiCliSdk.Options{
-  model: nil,                      # Model name (e.g., "gemini-2.5-flash", "gemini-2.5-pro")
+  model: nil,                      # Model name (e.g., "gemini-3.0-flash", "gemini-3.0-pro")
   yolo: false,                     # Skip all confirmation prompts
   approval_mode: nil,              # "auto-edit" | "full-auto" | nil
   sandbox: false,                  # Run in sandbox mode
@@ -31,7 +31,7 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 # Use a specific model
-opts = %GeminiCliSdk.Options{model: "gemini-2.5-flash"}
+opts = %GeminiCliSdk.Options{model: "gemini-3.0-flash"}
 {:ok, response} = GeminiCliSdk.run("Quick question", opts)
 ```
 
@@ -75,7 +75,7 @@ opts = %GeminiCliSdk.Options{cwd: "/path/to/project"}
 opts = %GeminiCliSdk.Options{
   env: %{
     "GEMINI_API_KEY" => "your-key-here",
-    "GEMINI_MODEL" => "gemini-2.5-flash"
+    "GEMINI_MODEL" => "gemini-3.0-flash"
   }
 }
 ```

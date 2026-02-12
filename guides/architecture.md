@@ -18,6 +18,10 @@ graph TD
     B --> K[Types]
     C --> G
     E --> L[erlexec NIF]
+    B --> M[Configuration]
+    E --> M
+    C --> M
+    B --> N[Models]
 ```
 
 ## Data Flow
@@ -126,6 +130,14 @@ Handles temporary settings files. When `Options.settings` is set, it writes a `s
 ### `GeminiCliSdk.Command`
 
 Synchronous command runner for non-streaming operations (list sessions, delete session, version). Uses `:exec.run/2` directly and collects output.
+
+### `GeminiCliSdk.Models`
+
+Single source of truth for model names. Provides `default_model/0`, `fast_model/0`, alias resolution, and validation. All model references in the SDK flow through this module. See the [Models guide](models.md).
+
+### `GeminiCliSdk.Configuration`
+
+Centralizes all numeric constants (timeouts, buffer sizes, limits). Every internal module reads its constants from here. Supports runtime override via `Application.get_env/3`. See the [Configuration guide](configuration.md).
 
 ## OTP Integration
 

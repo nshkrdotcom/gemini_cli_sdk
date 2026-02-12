@@ -65,7 +65,7 @@ IO.puts(response)
 
 ```elixir
 opts = %GeminiCliSdk.Options{
-  model: "gemini-2.5-flash",
+  model: "gemini-3.0-flash",
   yolo: true,
   timeout_ms: 60_000
 }

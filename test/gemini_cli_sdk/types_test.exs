@@ -1,8 +1,7 @@
 defmodule GeminiCliSdk.TypesTest do
   use ExUnit.Case, async: true
 
-  alias GeminiCliSdk.Error
-  alias GeminiCliSdk.Types
+  alias GeminiCliSdk.{Error, Models, Types}
 
   describe "parse_event/1" do
     test "parses init event" do
@@ -10,13 +9,13 @@ defmodule GeminiCliSdk.TypesTest do
         Jason.encode!(%{
           type: "init",
           session_id: "abc123",
-          model: "gemini-2.5-pro",
+          model: Models.default_model(),
           timestamp: "2026-02-11T12:00:00.000Z"
         })
 
       assert {:ok, %Types.InitEvent{} = event} = Types.parse_event(json)
       assert event.session_id == "abc123"
-      assert event.model == "gemini-2.5-pro"
+      assert event.model == Models.default_model()
     end
 
     test "parses message event with role=user" do
@@ -150,7 +149,7 @@ defmodule GeminiCliSdk.TypesTest do
         Jason.encode!(%{
           type: "init",
           session_id: "abc",
-          model: "gemini-2.5-pro",
+          model: Models.default_model(),
           new_future_field: "ignored"
         })
 
