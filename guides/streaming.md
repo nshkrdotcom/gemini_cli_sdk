@@ -34,8 +34,8 @@ Every line of JSONL output from the CLI is parsed into one of these structs:
 |--------|-------------|
 | `Types.InitEvent` | Session initialized. Contains `session_id` and `model`. |
 | `Types.MessageEvent` | A message chunk. Has `role` (`"user"` or `"assistant"`) and `content`. |
-| `Types.ToolUseEvent` | The model is invoking a tool. Contains `name` and `input`. |
-| `Types.ToolResultEvent` | A tool returned a result. Contains `name` and `output`. |
+| `Types.ToolUseEvent` | The model is invoking a tool. Contains `tool_name` and `parameters`. |
+| `Types.ToolResultEvent` | A tool returned a result. Contains `tool_id` and `output`. |
 | `Types.ErrorEvent` | An error occurred. Has `severity` and `message`. |
 | `Types.ResultEvent` | Final result. Has `status` (`"success"` or `"error"`) and `stats`. |
 
@@ -108,11 +108,11 @@ When the model invokes tools, you'll see `ToolUseEvent` and `ToolResultEvent` pa
 GeminiCliSdk.execute("List the files in the current directory")
 |> Enum.each(fn event ->
   case event do
-    %GeminiCliSdk.Types.ToolUseEvent{name: name, input: input} ->
-      IO.puts("Tool call: #{name}(#{inspect(input)})")
+    %GeminiCliSdk.Types.ToolUseEvent{tool_name: name, parameters: params} ->
+      IO.puts("Tool call: #{name}(#{inspect(params)})")
 
-    %GeminiCliSdk.Types.ToolResultEvent{name: name, output: output} ->
-      IO.puts("Tool result: #{name} -> #{inspect(output)}")
+    %GeminiCliSdk.Types.ToolResultEvent{tool_id: id, output: output} ->
+      IO.puts("Tool result: #{id} -> #{inspect(output)}")
 
     %GeminiCliSdk.Types.MessageEvent{role: "assistant", content: text} ->
       IO.write(text)

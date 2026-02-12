@@ -97,10 +97,24 @@ defmodule GeminiCliSdk.TypesTest do
           type: "error",
           severity: "fatal",
           message: "Authentication failed",
+          kind: "transport_exit",
+          exit_code: 41,
+          stderr: "auth failed",
+          stderr_truncated: true,
+          details: %{"reason" => "exit_status"},
           timestamp: "2026-02-11T12:00:06.000Z"
         })
 
-      assert {:ok, %Types.ErrorEvent{severity: "fatal", message: "Authentication failed"}} =
+      assert {:ok,
+              %Types.ErrorEvent{
+                severity: "fatal",
+                message: "Authentication failed",
+                kind: "transport_exit",
+                exit_code: 41,
+                stderr: "auth failed",
+                stderr_truncated?: true,
+                details: %{"reason" => "exit_status"}
+              }} =
                Types.parse_event(json)
     end
 

@@ -15,7 +15,7 @@ defmodule GeminiCliSdk.CLI do
   alias GeminiCliSdk.Error
 
   defmodule CommandSpec do
-    @moduledoc false
+    @moduledoc "Describes a resolved CLI binary: the program path and any argv prefix."
 
     @enforce_keys [:program]
     defstruct program: "", argv_prefix: []

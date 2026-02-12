@@ -57,7 +57,7 @@ defmodule GeminiCliSdk.MixProject do
         "GitHub" => "https://github.com/nshkrdotcom/gemini_cli_sdk"
       },
       maintainers: [{"NSHkr", "ZeroTrust@NSHkr.com"}],
-      files: ~w(lib assets mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 

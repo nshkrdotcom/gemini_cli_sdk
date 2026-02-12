@@ -29,7 +29,8 @@ defmodule GeminiCliSdk.Options do
           env: map(),
           settings: map() | nil,
           system_prompt: String.t() | nil,
-          timeout_ms: pos_integer()
+          timeout_ms: pos_integer(),
+          max_stderr_buffer_bytes: pos_integer()
         }
 
   defstruct model: nil,
@@ -47,7 +48,8 @@ defmodule GeminiCliSdk.Options do
             env: %{},
             settings: nil,
             system_prompt: nil,
-            timeout_ms: @default_timeout_ms
+            timeout_ms: @default_timeout_ms,
+            max_stderr_buffer_bytes: Configuration.max_stderr_buffer_size()
 
   @valid_approval_modes [:default, :auto_edit, :yolo, :plan]
 
@@ -71,6 +73,10 @@ defmodule GeminiCliSdk.Options do
       opts.timeout_ms <= 0 ->
         raise ArgumentError,
               "timeout_ms must be positive, got #{opts.timeout_ms}"
+
+      opts.max_stderr_buffer_bytes <= 0 ->
+        raise ArgumentError,
+              "max_stderr_buffer_bytes must be positive, got #{opts.max_stderr_buffer_bytes}"
 
       true ->
         opts

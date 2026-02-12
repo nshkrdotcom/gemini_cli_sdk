@@ -96,8 +96,8 @@ end)
 |--------|-------------|
 | `Types.InitEvent` | Session initialized with `session_id` and `model` |
 | `Types.MessageEvent` | Message chunk with `role` and `content` |
-| `Types.ToolUseEvent` | Tool invocation with `name` and `input` |
-| `Types.ToolResultEvent` | Tool result with `name` and `output` |
+| `Types.ToolUseEvent` | Tool invocation with `tool_name` and `parameters` |
+| `Types.ToolResultEvent` | Tool result with `tool_id` and `output` |
 | `Types.ErrorEvent` | Error with `severity` and `message` |
 | `Types.ResultEvent` | Final result with `status` and `stats` |
 
@@ -113,7 +113,7 @@ Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).
 
 ## Examples
 
-See the [`examples/`](examples/) directory for live examples that run against the real Gemini CLI:
+See the `examples/` directory for live examples that run against the real Gemini CLI:
 
 ```bash
 mix run examples/simple_prompt.exs

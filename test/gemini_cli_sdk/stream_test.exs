@@ -136,6 +136,66 @@ defmodule GeminiCliSdk.StreamTest do
         File.rm_rf(dir)
       end
     end
+
+    test "transport exit includes structured stderr and exit_code details" do
+      dir = TestSupport.tmp_dir!("gemini_stream_structured_exit")
+      stub_path = write_stream_stub!(dir)
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          events =
+            GeminiCliSdk.Stream.execute("bad prompt", %GeminiCliSdk.Options{
+              timeout_ms: 5_000,
+              env: %{
+                "GEMINI_TEST_STDERR" => "fatal auth error",
+                "GEMINI_TEST_EXIT_CODE" => "41"
+              }
+            })
+            |> Enum.to_list()
+
+          assert events != []
+          last = List.last(events)
+          assert %Types.ErrorEvent{severity: "fatal", kind: :transport_exit, exit_code: 41} = last
+          assert last.message =~ "code 41"
+          assert last.stderr == "fatal auth error"
+          assert is_map(last.details)
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
+
+    test "transport exit caps stderr tail and marks truncation" do
+      dir = TestSupport.tmp_dir!("gemini_stream_truncated_stderr")
+      stub_path = write_stream_stub!(dir)
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          events =
+            GeminiCliSdk.Stream.execute("bad prompt", %GeminiCliSdk.Options{
+              timeout_ms: 5_000,
+              max_stderr_buffer_bytes: 16,
+              env: %{
+                "GEMINI_TEST_STDERR" => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                "GEMINI_TEST_EXIT_CODE" => "7"
+              }
+            })
+            |> Enum.to_list()
+
+          assert events != []
+          last = List.last(events)
+
+          assert %Types.ErrorEvent{kind: :transport_exit, exit_code: 7, stderr_truncated?: true} =
+                   last
+
+          assert is_binary(last.stderr)
+          assert byte_size(last.stderr) <= 16
+          assert String.ends_with?(last.stderr, "QRSTUVWXYZ")
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
   end
 
   describe "timeout handling" do
