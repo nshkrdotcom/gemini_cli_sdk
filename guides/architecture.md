@@ -9,19 +9,21 @@ graph TD
     A[GeminiCliSdk] --> B[Stream]
     A --> C[Command]
     A --> D[Session]
-    B --> E[Transport.Erlexec]
-    C --> F[Exec]
-    B --> G[CLI]
-    B --> H[ArgBuilder]
-    B --> I[Env]
-    B --> J[Config]
-    B --> K[Types]
-    C --> G
-    E --> L[erlexec NIF]
-    B --> M[Configuration]
-    E --> M
-    C --> M
-    B --> N[Models]
+    B --> E[Runtime.CLI]
+    E --> F[CliSubprocessCore.Session]
+    F --> G[CliSubprocessCore.Transport]
+    G --> H[erlexec NIF]
+    E --> I[CLI]
+    E --> J[ArgBuilder]
+    E --> K[Env]
+    E --> L[Config]
+    B --> M[Types]
+    C --> N[Exec]
+    C --> I
+    B --> O[Configuration]
+    C --> O
+    D --> B
+    P[Transport / Transport.Erlexec] --> G
 ```
 
 ## Data Flow
@@ -38,25 +40,25 @@ GeminiCliSdk.execute/2          -- validates options
 Stream.execute/2                -- returns Stream.resource/3
   |
   v
-Stream.start/2                  -- resolves CLI, builds args/env
-  |                                creates transport, closes stdin
+Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
+  |                                starts a CliSubprocessCore.Session
   v
-Transport.Erlexec               -- GenServer managing erlexec
+CliSubprocessCore.Session       -- shared common CLI session engine
   |
   v
-erlexec (NIF)                   -- spawns OS process with process groups
+CliSubprocessCore.Transport     -- shared raw transport wrapper
   |
   v
 gemini CLI process              -- emits JSONL to stdout
   |
   v
-Transport.Erlexec               -- line buffers stdout, emits tagged messages
+CliSubprocessCore.Session       -- decodes Gemini profile events
   |
   v
-Stream.receive_next/1           -- selective receive, parses JSON
+Runtime.CLI.project_event/2     -- projects core events into Gemini public structs
   |
   v
-Types.parse_event/1             -- converts to typed structs
+Stream.receive_next/1           -- selective receive, timeout handling, cleanup
   |
   v
 User's Enum/Stream consumer     -- processes events lazily
@@ -90,26 +92,43 @@ The top-level module is a thin facade that delegates to internal modules. It pro
 
 ### `GeminiCliSdk.Stream`
 
-The stream module uses `Stream.resource/3` with three callbacks:
+The stream module still uses `Stream.resource/3`, but it now delegates session
+ownership to the shared core lane.
 
-1. **start_fn**: Resolves the CLI binary, builds args (including `--prompt` with the prompt text) and env, starts the transport GenServer, and closes stdin.
-2. **next_fn**: Does selective receive on `{:gemini_sdk_transport, ref, event}` messages, parses JSONL lines, and yields typed event structs.
-3. **after_fn**: Force-closes the transport, flushes leftover messages from the mailbox, and cleans up any temporary settings files.
+Its main responsibilities are:
+
+1. **start_fn**: Starts `GeminiCliSdk.Runtime.CLI`, subscribes to a tagged core session, and closes stdin for prompt-driven runs.
+2. **next_fn**: Does selective receive on tagged core session events, captures stderr, projects public Gemini events, and enforces idle timeouts.
+3. **after_fn**: Closes the core session, flushes leftover mailbox messages, and cleans up temporary settings files.
+
+### `GeminiCliSdk.Runtime.CLI`
+
+This is the Gemini runtime kit above `CliSubprocessCore.Session`.
+
+It is responsible for:
+
+- preserving Gemini CLI command resolution, including `GEMINI_CLI_PATH` and `npx`
+- preserving Gemini option-to-flag shaping for the public SDK surface
+- starting the shared core session runtime
+- projecting normalized core events back into `GeminiCliSdk.Types.*`
+
+The runtime kit uses a small Gemini compatibility profile for invocation
+construction only. Parsing, event normalization, and subprocess ownership remain
+core-owned.
 
 ### `GeminiCliSdk.Transport.Erlexec`
 
-A GenServer that wraps the erlexec library. Key responsibilities:
+This module is now a thin compatibility wrapper over
+`CliSubprocessCore.Transport.Erlexec`.
 
-- Spawns the OS process via `:exec.run/2`
-- Buffers stdout line-by-line (splits on `\n`, flushes partial lines on exit)
-- Captures stderr into a capped ring buffer
-- Delivers events to subscribers via tagged messages: `{:gemini_sdk_transport, ref, event}`
-- Manages graceful shutdown (SIGTERM then SIGKILL)
-- Handles headless timeout (auto-stop if no subscriber connects within 5 seconds)
+It preserves Gemini's module path for raw transport access, but the actual
+transport implementation lives in `cli_subprocess_core`.
 
 ### `GeminiCliSdk.Types`
 
-Defines the 6 event structs and the `parse_event/1` function that converts raw JSON maps into typed structs. Also provides `final_event?/1` to detect stream-ending events.
+Defines the 6 public event structs and the `parse_event/1` helper used by the
+compatibility projection layer. `final_event?/1` still identifies stream-ending
+events for the public Gemini surface.
 
 ### `GeminiCliSdk.CLI`
 
@@ -124,7 +143,10 @@ Set `GEMINI_NO_NPX=1` to disable the npx fallback. Returns a `CommandSpec` with 
 
 ### `GeminiCliSdk.ArgBuilder`
 
-Converts an `Options` struct into a list of CLI arguments. Each option maps to a specific CLI flag.
+Converts an `Options` struct into Gemini CLI arguments. After the replatform it
+is no longer part of a Gemini-owned transport/runtime stack; it is only used by
+`GeminiCliSdk.Runtime.CLI` to preserve Gemini-specific invocation compatibility
+above the shared core session engine.
 
 ### `GeminiCliSdk.Env`
 
@@ -148,7 +170,11 @@ Centralizes all numeric constants (timeouts, buffer sizes, limits). Every intern
 
 ## OTP Integration
 
-The application starts a `Task.Supervisor` named `GeminiCliSdk.TaskSupervisor`, used for async I/O operations (sending stdin, closing stdin) in the transport layer.
+`cli_subprocess_core` starts the shared `Task.Supervisor` and provider registry
+used by the core session and transport layers.
+
+GeminiCliSdk keeps its own OTP application module for SDK-local processes and
+backwards-compatible application startup.
 
 ## Error Architecture
 
@@ -157,4 +183,5 @@ Errors flow through two paths:
 1. **Stream path**: Errors become `Types.ErrorEvent` structs in the event stream
 2. **Command path**: Errors become `{:error, %Error{}}` tuples
 
-Exit codes from the CLI are mapped to error kinds via `Error.from_exit_code/1`.
+Core runtime errors are projected back into Gemini `Types.ErrorEvent` values so
+callers do not need to adopt the normalized core event vocabulary.

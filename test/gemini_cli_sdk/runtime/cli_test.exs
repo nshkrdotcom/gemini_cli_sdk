@@ -1,0 +1,185 @@
+defmodule GeminiCliSdk.Runtime.CLITest do
+  use ExUnit.Case, async: false
+
+  alias CliSubprocessCore.{Event, Payload, ProcessExit}
+  alias GeminiCliSdk.{Options, Runtime.CLI, TestSupport, Types}
+
+  @runtime_event_tag :cli_subprocess_core_session
+
+  defp write_runtime_stub!(dir) do
+    script = """
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sleep 60
+    """
+
+    TestSupport.write_executable!(dir, "gemini", script)
+  end
+
+  describe "start_session/1" do
+    test "builds a core session with Gemini-compatible invocation args and env" do
+      dir = TestSupport.tmp_dir!("gemini_runtime_cli")
+      stub_path = write_runtime_stub!(dir)
+      monitor_ref = make_ref()
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          options = %Options{
+            model: "gemini-2.5-pro",
+            approval_mode: :plan,
+            sandbox: true,
+            resume: "abc123",
+            extensions: ["ext1", "ext2"],
+            include_directories: ["src", "docs"],
+            allowed_tools: ["Bash", "Read"],
+            allowed_mcp_server_names: ["github", "jira"],
+            debug: true,
+            settings: %{"theme" => "test"},
+            system_prompt: "Be concise.",
+            env: %{"GEMINI_TEST_RUNTIME" => "1"}
+          }
+
+          assert {:ok, session, %{info: info, temp_dir: temp_dir}} =
+                   CLI.start_session(
+                     prompt: "hello",
+                     options: options,
+                     subscriber: {self(), monitor_ref}
+                   )
+
+          assert info.provider == :gemini
+          assert info.session_event_tag == @runtime_event_tag
+          assert info.runtime.provider == :gemini
+          assert info.invocation.command == stub_path
+          assert info.invocation.cwd == File.cwd!()
+          assert info.invocation.env["GEMINI_TEST_RUNTIME"] == "1"
+          assert info.invocation.env["GEMINI_SYSTEM_MD"] == "Be concise."
+
+          args = info.invocation.args
+
+          assert "--prompt" in args
+          assert "--output-format" in args
+          assert "--model" in args
+          assert "--approval-mode" in args
+          assert "--sandbox" in args
+          assert "--resume" in args
+          assert "--include-directories" in args
+          assert "--allowed-tools" in args
+          assert "--allowed-mcp-server-names" in args
+          assert "--debug" in args
+
+          extension_indices =
+            args
+            |> Enum.with_index()
+            |> Enum.filter(fn {value, _index} -> value == "--extensions" end)
+            |> Enum.map(fn {_value, index} -> index end)
+
+          assert length(extension_indices) == 2
+          assert Enum.map(extension_indices, &Enum.at(args, &1 + 1)) == ["ext1", "ext2"]
+
+          settings_idx = Enum.find_index(args, &(&1 == "--settings-file"))
+          assert is_integer(settings_idx)
+
+          settings_path = Enum.at(args, settings_idx + 1)
+          assert is_binary(settings_path)
+          assert File.exists?(settings_path)
+          assert String.starts_with?(settings_path, temp_dir)
+
+          session_monitor = Process.monitor(session)
+          assert :ok = CLI.close(session)
+          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+
+          File.rm_rf!(temp_dir)
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
+  end
+
+  describe "project_event/2" do
+    test "drops synthetic session events and projects Gemini raw events back to public structs" do
+      state = CLI.new_projection_state()
+
+      run_started =
+        Event.new(:run_started,
+          payload: Payload.RunStarted.new(command: "gemini", args: ["--prompt", "hello"])
+        )
+
+      init_raw = %{"type" => "init", "session_id" => "sess-123", "model" => "gemini-2.5-pro"}
+
+      init_event =
+        Event.new(:raw,
+          raw: init_raw,
+          payload: Payload.Raw.new(stream: :stdout, content: init_raw)
+        )
+
+      assert {[], ^state} = CLI.project_event(run_started, state)
+
+      assert {[projected_init], state} = CLI.project_event(init_event, state)
+      assert %Types.InitEvent{session_id: "sess-123", model: "gemini-2.5-pro"} = projected_init
+
+      message_raw = %{
+        "type" => "message",
+        "role" => "assistant",
+        "content" => "Hello",
+        "delta" => true
+      }
+
+      message_event =
+        Event.new(:assistant_delta,
+          raw: message_raw,
+          payload: Payload.AssistantDelta.new(content: "Hello")
+        )
+
+      assert {[projected_message], state} = CLI.project_event(message_event, state)
+
+      assert %Types.MessageEvent{role: "assistant", content: "Hello", delta: true} =
+               projected_message
+
+      result_raw = %{"type" => "result", "status" => "success", "stats" => %{"input_tokens" => 1}}
+
+      result_event =
+        Event.new(:result,
+          raw: result_raw,
+          payload: Payload.Result.new(status: :completed)
+        )
+
+      assert {[projected_result], _state} = CLI.project_event(result_event, state)
+      assert %Types.ResultEvent{status: "success"} = projected_result
+    end
+
+    test "projects core parse and exit failures to Gemini error events" do
+      state = CLI.new_projection_state()
+
+      parse_error =
+        Event.new(:error,
+          raw: "{broken json",
+          payload:
+            Payload.Error.new(
+              message: "unexpected byte at position 1",
+              code: "parse_error",
+              metadata: %{line: "{broken json"}
+            )
+        )
+
+      assert {[parse_failure], _state} = CLI.project_event(parse_error, state)
+      assert %Types.ErrorEvent{severity: "fatal", kind: :parse_error} = parse_failure
+      assert parse_failure.message =~ "JSON parse error"
+
+      exit_state = CLI.new_projection_state()
+
+      exit_result =
+        Event.new(:result,
+          raw: %{exit: %ProcessExit{status: :success, code: 0, reason: :normal}},
+          payload: Payload.Result.new(status: :completed)
+        )
+
+      assert {[exit_failure], _state} = CLI.project_event(exit_result, exit_state)
+
+      assert %Types.ErrorEvent{severity: "fatal", kind: :transport_exit, exit_code: 0} =
+               exit_failure
+
+      assert exit_failure.message =~ "code 0"
+    end
+  end
+end

@@ -41,6 +41,7 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
+      {:cli_subprocess_core, path: "../cli_subprocess_core"},
       {:erlexec, "~> 2.0"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
@@ -129,6 +130,7 @@ defmodule GeminiCliSdk.MixProject do
         ],
         Internals: [
           GeminiCliSdk.Stream,
+          GeminiCliSdk.Runtime.CLI,
           GeminiCliSdk.Command,
           GeminiCliSdk.Session,
           GeminiCliSdk.Transport,

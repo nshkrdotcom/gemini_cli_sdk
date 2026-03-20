@@ -188,6 +188,44 @@ defmodule GeminiCliSdkTest do
       end
     end
 
+    test "resume_session/3 preserves the resume identifier on the shared runtime lane" do
+      dir = TestSupport.tmp_dir!("gemini_api_resume_session")
+      args_file = Path.join(dir, "args.txt")
+      stub_path = write_api_stub!(dir)
+      fixture = TestSupport.fixture_path("simple_response.jsonl")
+
+      try do
+        TestSupport.with_env(
+          %{
+            "GEMINI_CLI_PATH" => stub_path,
+            "GEMINI_TEST_ARGS_FILE" => args_file
+          },
+          fn ->
+            events =
+              GeminiCliSdk.resume_session(
+                "abc123",
+                %Options{
+                  timeout_ms: 5_000,
+                  env: %{"GEMINI_TEST_STREAM_FILE" => fixture}
+                },
+                "Continue"
+              )
+              |> Enum.to_list()
+
+            assert %Types.InitEvent{} = hd(events)
+
+            args = File.read!(args_file)
+            assert args =~ "--resume"
+            assert args =~ "abc123"
+            assert args =~ "--prompt"
+            assert args =~ "Continue"
+          end
+        )
+      after
+        File.rm_rf(dir)
+      end
+    end
+
     test "delete_session/1 passes identifier to CLI" do
       dir = TestSupport.tmp_dir!("gemini_api_delete_session")
       args_file = Path.join(dir, "args.txt")

@@ -1,6 +1,7 @@
 defmodule GeminiCliSdk.Transport.ErlexecTest do
   use ExUnit.Case, async: false
 
+  alias CliSubprocessCore.ProcessExit
   alias GeminiCliSdk.Transport.Erlexec
 
   defp sh_path, do: System.find_executable("sh") || "sh"
@@ -72,18 +73,18 @@ defmodule GeminiCliSdk.Transport.ErlexecTest do
     end
 
     test "caps stderr buffer to configured tail size" do
+      ref = make_ref()
+
       {:ok, transport} =
         Erlexec.start(
           command: sh_path(),
           args: ["-c", "printf '1234567890ABCDEFGHIJ' >&2"],
-          max_stderr_buffer_size: 8
+          max_stderr_buffer_size: 8,
+          subscriber: {self(), ref}
         )
 
-      ref = make_ref()
-      :ok = Erlexec.subscribe(transport, self(), ref)
-
-      assert_receive {:gemini_sdk_transport, ^ref, {:stderr, stderr}}, 2_000
-      assert byte_size(stderr) <= 8
+      assert_receive {:gemini_sdk_transport, ^ref, {:stderr, _stderr}}, 2_000
+      assert byte_size(Erlexec.stderr(transport)) <= 8
     end
   end
 
@@ -98,9 +99,10 @@ defmodule GeminiCliSdk.Transport.ErlexecTest do
       ref = make_ref()
       :ok = Erlexec.subscribe(transport, self(), ref)
 
-      assert_receive {:gemini_sdk_transport, ^ref, {:exit, {:exit_status, exit_status}}}, 2_000
-      # erlexec may encode exit status as code * 256
-      assert exit_status == 42 or exit_status == 42 * 256
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, %ProcessExit{} = exit}}, 2_000
+      assert exit.status == :exit
+      assert exit.code == 42
+      assert exit.reason == {:exit_status, 42 * 256}
     end
   end
 

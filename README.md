@@ -19,7 +19,8 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Streaming** -- Lazy `Stream`-based API with typed event structs and backpressure
 - **Synchronous** -- Simple `{:ok, text} | {:error, error}` for request/response patterns
 - **Session Management** -- List, resume, and delete conversation sessions
-- **Subprocess Safety** -- Built on [erlexec](https://hex.pm/packages/erlexec) with process groups, signal delivery, and guaranteed cleanup
+- **Shared Core Runtime** -- Streaming now runs on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
+- **Subprocess Safety** -- Built on `cli_subprocess_core` and [erlexec](https://hex.pm/packages/erlexec) for session cleanup and raw process control
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
 - **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O
@@ -100,6 +101,47 @@ end)
 | `Types.ToolResultEvent` | Tool result with `tool_id` and `output` |
 | `Types.ErrorEvent` | Error with `severity` and `message` |
 | `Types.ResultEvent` | Final result with `status` and `stats` |
+
+## Architecture
+
+GeminiCliSdk preserves its public API while running the common CLI session lane on
+`cli_subprocess_core`.
+
+The current layering is:
+
+```text
+GeminiCliSdk public API
+  -> GeminiCliSdk.Stream / GeminiCliSdk.Runtime.CLI
+  -> CliSubprocessCore.Session
+  -> CliSubprocessCore raw transport
+  -> gemini CLI
+```
+
+`GeminiCliSdk.Runtime.CLI` is the Gemini compatibility runtime kit. It starts
+core sessions, preserves Gemini CLI command resolution and option shaping, and
+projects normalized core events back into `GeminiCliSdk.Types.*`.
+
+The preserved `GeminiCliSdk.Transport` modules are now thin wrappers over the
+core raw transport layer instead of owning a separate subprocess runtime.
+
+## Migration Note
+
+Phase 1 moved the common Gemini CLI runtime family into `cli_subprocess_core`:
+
+- shared session lifecycle
+- shared JSONL parsing and normalized event flow
+- shared raw `erlexec` transport ownership
+
+Public Gemini entrypoints stay the same:
+
+- `GeminiCliSdk.execute/2`
+- `GeminiCliSdk.run/2`
+- `GeminiCliSdk.resume_session/3`
+- `GeminiCliSdk.list_sessions/1`
+- `GeminiCliSdk.delete_session/2`
+
+Gemini-specific synchronous command helpers and Gemini CLI command resolution
+remain in this repo above the shared core.
 
 ## Documentation
 

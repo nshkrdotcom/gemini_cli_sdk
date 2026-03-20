@@ -1,8 +1,16 @@
 # Configuration
 
-The `GeminiCliSdk.Configuration` module centralizes all numeric constants --
-timeouts, buffer sizes, batch limits, and delays -- used by the SDK's internal
-modules. Every value can be overridden via Application configuration.
+The `GeminiCliSdk.Configuration` module preserves the SDK's numeric defaults for
+timeouts, buffer sizes, and compatibility limits.
+
+After the runtime replatform, the shared streaming/session lane runs on
+`cli_subprocess_core`. That means the core owns most raw transport tuning.
+GeminiCliSdk still uses these values for:
+
+- stream receive timeouts and session shutdown grace periods
+- synchronous command execution
+- public option defaults and validation
+- preserved raw transport compatibility wrappers
 
 ## All Configuration Keys
 
@@ -13,27 +21,27 @@ modules. Every value can be overridden via Application configuration.
 | `:command_timeout_ms` | 60,000 | `Command` | Synchronous command timeout |
 | `:stream_timeout_ms` | 300,000 | `Stream` | Stream receive timeout |
 | `:default_timeout_ms` | 300,000 | `Options` | Default user-facing timeout |
-| `:transport_call_timeout_ms` | 5,000 | `Transport.Erlexec` | GenServer call timeout |
-| `:transport_force_close_timeout_ms` | 500 | `Transport.Erlexec` | Force-close timeout |
-| `:transport_headless_timeout_ms` | 5,000 | `Transport.Erlexec` | No-subscriber auto-stop |
+| `:transport_call_timeout_ms` | 5,000 | Legacy compatibility docs | Preserved legacy timeout |
+| `:transport_force_close_timeout_ms` | 500 | Legacy compatibility docs | Preserved legacy timeout |
+| `:transport_headless_timeout_ms` | 5,000 | Legacy compatibility docs | Preserved legacy timeout |
 | `:transport_close_grace_ms` | 2,000 | `Stream` | Close grace period |
 | `:transport_kill_grace_ms` | 250 | `Stream` | Kill/demonitor grace period |
 | `:command_stop_wait_ms` | 200 | `Command` | Wait after SIGTERM |
 | `:command_kill_wait_ms` | 500 | `Command` | Wait after SIGKILL |
-| `:finalize_delay_ms` | 25 | `Transport.Erlexec` | Exit finalization delay |
+| `:finalize_delay_ms` | 25 | Legacy compatibility docs | Preserved legacy delay |
 
 ### Buffer Sizes
 
 | Key | Default | Used By | Description |
 |-----|---------|---------|-------------|
-| `:max_buffer_size` | 1,048,576 (1 MB) | `Transport.Erlexec` | Max stdout buffer |
-| `:max_stderr_buffer_size` | 262,144 (256 KB) | `Transport.Erlexec` | Max stderr ring buffer |
+| `:max_buffer_size` | 1,048,576 (1 MB) | Legacy compatibility docs | Preserved legacy stdout buffer |
+| `:max_stderr_buffer_size` | 262,144 (256 KB) | `Options`, `Stream` | Default stderr retention size |
 
 ### Limits
 
 | Key | Default | Used By | Description |
 |-----|---------|---------|-------------|
-| `:max_lines_per_batch` | 200 | `Transport.Erlexec` | Stdout drain batch size |
+| `:max_lines_per_batch` | 200 | Legacy compatibility docs | Preserved legacy batch size |
 | `:max_include_directories` | 5 | `Options` | Max include directories |
 
 ## Overriding Configuration
@@ -75,12 +83,12 @@ Configuration.all()
 
 ## Compile-Time vs Runtime
 
-Some modules consume Configuration values at **compile time** via module
-attributes for performance in hot paths:
+Some modules still consume Configuration values at **compile time** via module
+attributes:
 
 ```elixir
-# In Transport.Erlexec (evaluated once at compile time):
-@max_lines_per_batch Configuration.max_lines_per_batch()
+# In Stream (evaluated once at compile time):
+@session_close_grace_ms Configuration.transport_close_grace_ms()
 ```
 
 Others consume values at **runtime** for maximum flexibility:
@@ -94,8 +102,8 @@ timeout = Configuration.command_timeout_ms()
 
 - Values used via `Application.get_env/3` at runtime (in `Command`,
   `Options.validate!/1`) respond to config changes immediately.
-- Values captured in module attributes (`Transport.Erlexec`, `Stream`) require
-  recompilation (`mix compile --force`) to pick up new values.
+- Values captured in module attributes (`Stream`) require recompilation
+  (`mix compile --force`) to pick up new values.
 - The `Options` struct default (`timeout_ms: 300_000`) is set at compile time.
   To use a runtime-configured default, construct the struct explicitly:
   `%Options{timeout_ms: Configuration.default_timeout_ms()}`.
@@ -114,15 +122,14 @@ config :gemini_cli_sdk,
 
 ```elixir
 config :gemini_cli_sdk,
-  max_buffer_size: 4_194_304,         # 4 MB stdout buffer
-  max_lines_per_batch: 500            # Larger drain batches
+  stream_timeout_ms: 600_000,
+  transport_close_grace_ms: 5_000
 ```
 
 ### For Resource-Constrained Environments
 
 ```elixir
 config :gemini_cli_sdk,
-  max_buffer_size: 524_288,           # 512 KB stdout buffer
   max_stderr_buffer_size: 65_536,     # 64 KB stderr buffer
-  max_lines_per_batch: 50
+  default_timeout_ms: 120_000
 ```

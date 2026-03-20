@@ -1,6 +1,14 @@
 # Streaming
 
-The streaming API is the core of GeminiCliSdk. It returns a lazy `Enumerable` backed by `Stream.resource/3`, yielding typed event structs as the Gemini CLI produces output.
+The streaming API remains the core of GeminiCliSdk, but the runtime underneath
+it now runs on the shared `CliSubprocessCore.Session` lane.
+
+`GeminiCliSdk.Stream` starts `GeminiCliSdk.Runtime.CLI`, which:
+
+- resolves the Gemini CLI command the same way the SDK always has
+- starts a shared core session
+- captures stderr and lifecycle state
+- projects normalized core events back into `GeminiCliSdk.Types.*`
 
 ## Basic Usage
 
@@ -28,7 +36,7 @@ end)
 
 ## Event Types
 
-Every line of JSONL output from the CLI is parsed into one of these structs:
+The public stream still yields the same Gemini event structs:
 
 | Struct | Description |
 |--------|-------------|
@@ -79,7 +87,10 @@ messages =
 
 ## Backpressure
 
-Because the stream is backed by `Stream.resource/3`, backpressure is natural. If your consumer is slow, the stream simply waits for the next `receive` call. The subprocess buffers output in the transport layer (up to 1MB for stdout).
+Because the stream is backed by `Stream.resource/3`, backpressure is natural.
+If your consumer is slow, the stream simply waits for the next `receive` call.
+Stdout framing and subprocess flow control are handled by the shared core
+transport/session stack.
 
 ## Timeouts
 
@@ -90,15 +101,16 @@ GeminiCliSdk.execute("Complex analysis", %GeminiCliSdk.Options{timeout_ms: 120_0
 |> Enum.to_list()
 ```
 
-If the timeout is reached, a `Types.ErrorEvent` with a timeout message is emitted and the subprocess is cleaned up.
+If the timeout is reached, a `Types.ErrorEvent` with a timeout message is
+emitted and the core session is closed.
 
 ## Cleanup
 
 The stream guarantees cleanup in all cases:
 
 - **Full consumption** (`Enum.to_list/1`, `Enum.each/2`): cleanup runs after the last event
-- **Early halt** (`Enum.take/2`, `Stream.take_while/2`): subprocess is killed immediately
-- **Process death**: the transport GenServer is linked and will clean up the OS process
+- **Early halt** (`Enum.take/2`, `Stream.take_while/2`): the core session is closed immediately
+- **Process death**: the core session owns the raw transport and shuts down the OS process
 
 ## Tool Use Events
 

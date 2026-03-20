@@ -137,6 +137,36 @@ defmodule GeminiCliSdk.StreamTest do
       end
     end
 
+    test "invalid JSON output becomes a fatal parse error event" do
+      dir = TestSupport.tmp_dir!("gemini_stream_parse_error")
+      fixture_path = Path.join(dir, "broken.jsonl")
+      stub_path = write_stream_stub!(dir)
+
+      File.write!(fixture_path, """
+      {"type":"init","timestamp":"2026-02-11T12:00:00.000Z","session_id":"sess-parse","model":"gemini-2.5-pro"}
+      {broken json
+      """)
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          events =
+            GeminiCliSdk.Stream.execute("bad output", %GeminiCliSdk.Options{
+              timeout_ms: 5_000,
+              env: %{"GEMINI_TEST_STREAM_FILE" => fixture_path}
+            })
+            |> Enum.to_list()
+
+          assert length(events) == 2
+          assert %Types.InitEvent{session_id: "sess-parse"} = hd(events)
+
+          assert %Types.ErrorEvent{severity: "fatal", kind: :parse_error} = List.last(events)
+          assert List.last(events).message =~ "JSON parse error"
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
+
     test "transport exit includes structured stderr and exit_code details" do
       dir = TestSupport.tmp_dir!("gemini_stream_structured_exit")
       stub_path = write_stream_stub!(dir)
