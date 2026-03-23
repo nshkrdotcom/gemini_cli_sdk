@@ -164,6 +164,12 @@ Phase 2B keeps Gemini on the simple packaging path:
 - no extra ASM extension seam is introduced unless Gemini later proves a real
   richer provider-native surface beyond the current common lane
 
+If `gemini_cli_sdk` is installed alongside `agent_session_manager`, ASM
+reports Gemini runtime availability in
+`ASM.Extensions.ProviderSDK.capability_report/0` but keeps
+`namespaces: []` because Gemini currently composes through the common ASM
+surface only.
+
 ## Documentation
 
 Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).
