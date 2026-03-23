@@ -41,7 +41,7 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
-      {:cli_subprocess_core, path: "../cli_subprocess_core"},
+      workspace_dep(:cli_subprocess_core, "../cli_subprocess_core", "~> 0.1.0"),
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
@@ -54,10 +54,12 @@ defmodule GeminiCliSdk.MixProject do
       name: "gemini_cli_sdk",
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/nshkrdotcom/gemini_cli_sdk"
+        "GitHub" => "https://github.com/nshkrdotcom/gemini_cli_sdk",
+        "HexDocs" => "https://hexdocs.pm/gemini_cli_sdk"
       },
       maintainers: [{"NSHkr", "ZeroTrust@NSHkr.com"}],
-      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files:
+        ~w(lib guides assets examples/README.md mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 
@@ -185,5 +187,17 @@ defmodule GeminiCliSdk.MixProject do
       plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
       plt_add_apps: [:mix]
     ]
+  end
+
+  defp workspace_dep(app, path, requirement, opts \\ []) do
+    if hex_packaging?() do
+      {app, requirement, opts}
+    else
+      {app, Keyword.put(opts, :path, path)}
+    end
+  end
+
+  defp hex_packaging? do
+    Enum.any?(System.argv(), &String.starts_with?(&1, "hex."))
   end
 end

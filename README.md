@@ -155,6 +155,14 @@ ownership is limited to Gemini CLI discovery, argument and environment shaping,
 typed event/result projection, and compatibility wrappers that preserve the
 public Gemini transport surface above the shared core.
 
+Phase 2B keeps Gemini on the simple packaging path:
+
+- the common Gemini profile stays built into `cli_subprocess_core`
+- `gemini_cli_sdk` remains the thin provider-specific compatibility/runtime-kit
+  package above that shared core
+- no extra ASM extension seam is introduced unless Gemini later proves a real
+  richer provider-native surface beyond the current common lane
+
 ## Documentation
 
 Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).
