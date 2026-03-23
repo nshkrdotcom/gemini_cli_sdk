@@ -18,7 +18,7 @@ graph TD
     E --> K[Env]
     E --> L[Config]
     B --> M[Types]
-    C --> N[Exec]
+    C --> Q[CliSubprocessCore.Command]
     C --> I
     B --> O[Configuration]
     C --> O
@@ -158,7 +158,9 @@ Handles temporary settings files. When `Options.settings` is set, it writes a `s
 
 ### `GeminiCliSdk.Command`
 
-Synchronous command runner for non-streaming operations (list sessions, delete session, version). Uses `:exec.run/2` directly and collects output.
+Synchronous command runner for non-streaming operations (list sessions, delete
+session, version). It now builds Gemini-specific invocations locally and
+executes them through `CliSubprocessCore.Command.run/2`.
 
 ### `GeminiCliSdk.Models`
 

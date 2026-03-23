@@ -19,8 +19,8 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Streaming** -- Lazy `Stream`-based API with typed event structs and backpressure
 - **Synchronous** -- Simple `{:ok, text} | {:error, error}` for request/response patterns
 - **Session Management** -- List, resume, and delete conversation sessions
-- **Shared Core Runtime** -- Streaming now runs on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
-- **Subprocess Safety** -- Built on `cli_subprocess_core` and [erlexec](https://hex.pm/packages/erlexec) for session cleanup and raw process control
+- **Shared Core Runtime** -- Streaming and one-shot command execution now run on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
+- **Subprocess Safety** -- Built on `cli_subprocess_core`, which owns the shared `erlexec` transport for cleanup and raw process control
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
 - **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O
@@ -115,6 +115,11 @@ GeminiCliSdk public API
   -> CliSubprocessCore.Session
   -> CliSubprocessCore raw transport
   -> gemini CLI
+
+GeminiCliSdk command helpers
+  -> CliSubprocessCore.Command.run/2
+  -> CliSubprocessCore raw transport
+  -> gemini CLI
 ```
 
 `GeminiCliSdk.Runtime.CLI` is the Gemini compatibility runtime kit. It starts
@@ -131,6 +136,7 @@ Phase 1 moved the common Gemini CLI runtime family into `cli_subprocess_core`:
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
 - shared raw `erlexec` transport ownership
+- shared non-PTY command execution for session management and version helpers
 
 Public Gemini entrypoints stay the same:
 
@@ -140,8 +146,8 @@ Public Gemini entrypoints stay the same:
 - `GeminiCliSdk.list_sessions/1`
 - `GeminiCliSdk.delete_session/2`
 
-Gemini-specific synchronous command helpers and Gemini CLI command resolution
-remain in this repo above the shared core.
+Gemini CLI resolution, option shaping, and public result/error mapping remain in
+this repo above the shared core.
 
 ## Documentation
 

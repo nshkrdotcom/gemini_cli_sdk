@@ -17,6 +17,10 @@ IO.puts(response)
 2. Returns `{:ok, text}` if a `ResultEvent` with `status: "success"` is received
 3. Returns `{:error, %Error{}}` if a fatal `ErrorEvent` or error `ResultEvent` is received
 
+Gemini's non-streaming management helpers (`list_sessions/1`, `delete_session/2`,
+and `version/0`) use the shared `CliSubprocessCore.Command.run/2` lane under
+the same public API.
+
 ## Error Handling
 
 ```elixir
