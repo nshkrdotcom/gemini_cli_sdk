@@ -10,7 +10,7 @@ GeminiCliSdk still uses these values for:
 - stream receive timeouts and session shutdown grace periods
 - synchronous command execution
 - public option defaults and validation
-- preserved raw transport compatibility wrappers
+- preserved raw transport public modules
 
 ## All Configuration Keys
 

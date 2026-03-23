@@ -46,7 +46,7 @@ Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
 CliSubprocessCore.Session       -- shared common CLI session engine
   |
   v
-CliSubprocessCore.Transport     -- shared raw transport wrapper
+CliSubprocessCore.Transport     -- shared raw transport
   |
   v
 gemini CLI process              -- emits JSONL to stdout
@@ -118,16 +118,16 @@ core-owned.
 
 ### `GeminiCliSdk.Transport.Erlexec`
 
-This module is now a thin compatibility wrapper over
-`CliSubprocessCore.Transport.Erlexec`.
+This module is now the Gemini-named raw transport entrypoint backed by
+`CliSubprocessCore.Transport`.
 
-It preserves Gemini's module path for raw transport access, but the actual
+It preserves Gemini's module path for raw transport access while the actual
 transport implementation lives in `cli_subprocess_core`.
 
 ### `GeminiCliSdk.Types`
 
 Defines the 6 public event structs and the `parse_event/1` helper used by the
-compatibility projection layer. `final_event?/1` still identifies stream-ending
+public projection layer. `final_event?/1` still identifies stream-ending
 events for the public Gemini surface.
 
 ### `GeminiCliSdk.CLI`

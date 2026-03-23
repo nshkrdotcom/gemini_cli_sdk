@@ -122,12 +122,13 @@ GeminiCliSdk command helpers
   -> gemini CLI
 ```
 
-`GeminiCliSdk.Runtime.CLI` is the Gemini compatibility runtime kit. It starts
+`GeminiCliSdk.Runtime.CLI` is the Gemini runtime kit. It starts
 core sessions, preserves Gemini CLI command resolution and option shaping, and
 projects normalized core events back into `GeminiCliSdk.Types.*`.
 
-The preserved `GeminiCliSdk.Transport` modules are now thin wrappers over the
-core raw transport layer instead of owning a separate subprocess runtime.
+The preserved `GeminiCliSdk.Transport` modules are public Gemini entrypoints
+backed by the core raw transport layer instead of owning a separate subprocess
+runtime.
 
 ## Ownership Boundary
 
@@ -152,14 +153,14 @@ this repo above the shared core.
 
 No separate Gemini-owned common subprocess runtime remains here. Repo-local
 ownership is limited to Gemini CLI discovery, argument and environment shaping,
-typed event/result projection, and compatibility wrappers that preserve the
-public Gemini transport surface above the shared core.
+typed event/result projection, and the public Gemini transport surface above
+the shared core.
 
 Phase 2B keeps Gemini on the simple packaging path:
 
 - the common Gemini profile stays built into `cli_subprocess_core`
-- `gemini_cli_sdk` remains the thin provider-specific compatibility/runtime-kit
-  package above that shared core
+- `gemini_cli_sdk` remains the thin provider-specific runtime-kit package above
+  that shared core
 - no extra ASM extension seam is introduced unless Gemini later proves a real
   richer provider-native surface beyond the current common lane
 

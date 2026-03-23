@@ -1,6 +1,6 @@
 defmodule GeminiCliSdk.Transport do
   @moduledoc """
-  Behaviour and thin public compatibility facade for raw CLI transport access.
+  Behaviour and public raw CLI transport entrypoints for Gemini.
   """
 
   alias GeminiCliSdk.Error

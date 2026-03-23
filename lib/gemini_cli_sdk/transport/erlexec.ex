@@ -1,9 +1,9 @@
 defmodule GeminiCliSdk.Transport.Erlexec do
   @moduledoc """
-  Thin compatibility facade over `CliSubprocessCore.Transport`.
+  Gemini raw transport entrypoint backed by `CliSubprocessCore.Transport`.
 
-  This module remains only to preserve Gemini's public transport module path.
-  Subprocess lifecycle and raw transport behavior are owned by the shared core.
+  This module preserves Gemini's public transport module path while subprocess
+  lifecycle and raw transport behavior are owned by the shared core.
   """
 
   alias CliSubprocessCore.Transport, as: CoreTransport
