@@ -132,8 +132,7 @@ runtime.
 
 ## Ownership Boundary
 
-Phase 2A completed the Gemini ownership cut by moving the common Gemini CLI
-runtime family into `cli_subprocess_core`:
+The final Phase 3 boundary for Gemini is:
 
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
@@ -156,11 +155,11 @@ ownership is limited to Gemini CLI discovery, argument and environment shaping,
 typed event/result projection, and the public Gemini transport surface above
 the shared core.
 
-Phase 2B keeps Gemini on the simple packaging path:
+The release and composition model is:
 
 - the common Gemini profile stays built into `cli_subprocess_core`
-- `gemini_cli_sdk` remains the thin provider-specific runtime-kit package above
-  that shared core
+- `gemini_cli_sdk` remains the provider-specific runtime-kit package above that
+  shared core
 - no extra ASM extension seam is introduced unless Gemini later proves a real
   richer provider-native surface beyond the current common lane
 

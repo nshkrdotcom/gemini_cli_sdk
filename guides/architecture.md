@@ -83,7 +83,7 @@ Enum.reduce/3                   -- collects assistant text
 
 ### `GeminiCliSdk` (Public API)
 
-The top-level module is a thin facade that delegates to internal modules. It provides:
+The top-level module is a small delegating public API. It provides:
 
 - `execute/2` -- streaming execution
 - `run/2` -- synchronous execution
@@ -112,9 +112,9 @@ It is responsible for:
 - starting the shared core session runtime
 - projecting normalized core events back into `GeminiCliSdk.Types.*`
 
-The runtime kit uses a small Gemini compatibility profile for invocation
-construction only. Parsing, event normalization, and subprocess ownership remain
-core-owned.
+The runtime kit uses a small Gemini invocation profile for command
+construction only. Parsing, event normalization, and subprocess ownership
+remain core-owned.
 
 ### `GeminiCliSdk.Transport.Erlexec`
 
@@ -145,7 +145,7 @@ Set `GEMINI_NO_NPX=1` to disable the npx fallback. Returns a `CommandSpec` with 
 
 Converts an `Options` struct into Gemini CLI arguments. After the replatform it
 is no longer part of a Gemini-owned transport/runtime stack; it is only used by
-`GeminiCliSdk.Runtime.CLI` to preserve Gemini-specific invocation compatibility
+`GeminiCliSdk.Runtime.CLI` to preserve Gemini-specific invocation semantics
 above the shared core session engine.
 
 ### `GeminiCliSdk.Env`

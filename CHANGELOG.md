@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Runtime ownership and release docs now describe the final Phase 3 boundary:
+  `cli_subprocess_core` owns Gemini subprocess lifecycle and `erlexec`,
+  `gemini_cli_sdk` owns Gemini-specific invocation and projection logic, and
+  ASM composition remains common-surface-only with `namespaces: []`.
+
 ## v0.1.0 (2026-02-11)
 
 Initial release.
