@@ -129,9 +129,10 @@ projects normalized core events back into `GeminiCliSdk.Types.*`.
 The preserved `GeminiCliSdk.Transport` modules are now thin wrappers over the
 core raw transport layer instead of owning a separate subprocess runtime.
 
-## Migration Note
+## Ownership Boundary
 
-Phase 1 moved the common Gemini CLI runtime family into `cli_subprocess_core`:
+Phase 2A completed the Gemini ownership cut by moving the common Gemini CLI
+runtime family into `cli_subprocess_core`:
 
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
@@ -148,6 +149,11 @@ Public Gemini entrypoints stay the same:
 
 Gemini CLI resolution, option shaping, and public result/error mapping remain in
 this repo above the shared core.
+
+No separate Gemini-owned common subprocess runtime remains here. Repo-local
+ownership is limited to Gemini CLI discovery, argument and environment shaping,
+typed event/result projection, and compatibility wrappers that preserve the
+public Gemini transport surface above the shared core.
 
 ## Documentation
 
