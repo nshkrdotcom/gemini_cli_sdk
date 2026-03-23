@@ -6,14 +6,14 @@ defmodule GeminiCliSdk.TransportTest do
   defp sh_path, do: System.find_executable("sh") || "sh"
 
   test "top-level transport entrypoint preserves Gemini tagged subscriber events" do
-    {:ok, transport} =
+    ref = make_ref()
+
+    {:ok, _transport} =
       Transport.start(
         command: sh_path(),
-        args: ["-c", "printf 'hello\\n'"]
+        args: ["-c", "printf 'hello\\n'"],
+        subscriber: {self(), ref}
       )
-
-    ref = make_ref()
-    :ok = Transport.subscribe(transport, self(), ref)
 
     assert_receive {:gemini_sdk_transport, ^ref, {:message, "hello"}}, 2_000
     assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
