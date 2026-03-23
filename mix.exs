@@ -2,6 +2,10 @@ defmodule GeminiCliSdk.MixProject do
   use Mix.Project
 
   @version "0.1.0"
+  @source_url "https://github.com/nshkrdotcom/gemini_cli_sdk"
+  @homepage_url "https://hex.pm/packages/gemini_cli_sdk"
+  @docs_url "https://hexdocs.pm/gemini_cli_sdk"
+  @cli_subprocess_core_requirement "~> 0.1.0"
 
   def project do
     [
@@ -11,12 +15,12 @@ defmodule GeminiCliSdk.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description:
-        "An Elixir SDK for the Gemini CLI — Build AI-powered applications with Google Gemini",
+      description: description(),
       package: package(),
       docs: docs(),
       dialyzer: dialyzer(),
-      source_url: "https://github.com/nshkrdotcom/gemini_cli_sdk"
+      homepage_url: @homepage_url,
+      source_url: @source_url
     ]
   end
 
@@ -41,7 +45,11 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
-      workspace_dep(:cli_subprocess_core, "../cli_subprocess_core", "~> 0.1.0"),
+      workspace_dep(
+        :cli_subprocess_core,
+        "../cli_subprocess_core",
+        @cli_subprocess_core_requirement
+      ),
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
@@ -49,15 +57,23 @@ defmodule GeminiCliSdk.MixProject do
     ]
   end
 
+  defp description do
+    "An Elixir SDK for the Gemini CLI - build AI-powered applications with Google Gemini."
+  end
+
   defp package do
     [
       name: "gemini_cli_sdk",
+      description: description(),
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/nshkrdotcom/gemini_cli_sdk",
-        "HexDocs" => "https://hexdocs.pm/gemini_cli_sdk"
+        "GitHub" => @source_url,
+        "Hex" => @homepage_url,
+        "HexDocs" => @docs_url,
+        "Gemini CLI" => "https://github.com/google-gemini/gemini-cli",
+        "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
       },
-      maintainers: [{"NSHkr", "ZeroTrust@NSHkr.com"}],
+      maintainers: ["nshkrdotcom"],
       files:
         ~w(lib guides assets examples/README.md mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
@@ -68,8 +84,8 @@ defmodule GeminiCliSdk.MixProject do
       main: "readme",
       name: "GeminiCliSdk",
       source_ref: "v#{@version}",
-      source_url: "https://github.com/nshkrdotcom/gemini_cli_sdk",
-      homepage_url: "https://hex.pm/packages/gemini_cli_sdk",
+      source_url: @source_url,
+      homepage_url: @homepage_url,
       assets: %{"assets" => "assets"},
       logo: "assets/gemini_cli_sdk.svg",
       extras: [
