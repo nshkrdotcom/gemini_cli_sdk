@@ -132,7 +132,7 @@ runtime.
 
 ## Ownership Boundary
 
-The final Phase 3 boundary for Gemini is:
+The final Phase 4 boundary for Gemini is:
 
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
