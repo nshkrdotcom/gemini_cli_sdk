@@ -1,6 +1,11 @@
 defmodule GeminiCliSdk.Transport do
   @moduledoc """
   Behaviour and public raw CLI transport entrypoints for Gemini.
+
+  `GeminiCliSdk.Transport.Erlexec` remains the Gemini-named public
+  compatibility transport entrypoint backed by `CliSubprocessCore.Transport`.
+  The shared core owns subprocess lifecycle and raw transport behavior; this
+  module defines the Gemini-facing surface layered on top.
   """
 
   alias GeminiCliSdk.Error
