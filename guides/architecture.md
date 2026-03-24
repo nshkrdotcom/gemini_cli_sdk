@@ -97,8 +97,8 @@ ownership to the shared core lane.
 
 Its main responsibilities are:
 
-1. **start_fn**: Starts `GeminiCliSdk.Runtime.CLI`, subscribes to a tagged core session, and closes stdin for prompt-driven runs.
-2. **next_fn**: Does selective receive on tagged core session events, captures stderr, projects public Gemini events, and enforces idle timeouts.
+1. **start_fn**: Starts `GeminiCliSdk.Runtime.CLI`, subscribes to the scoped core session event stream, and closes stdin for prompt-driven runs.
+2. **next_fn**: Does selective receive on that session's internal runtime events, captures stderr, projects public Gemini events, and enforces idle timeouts.
 3. **after_fn**: Closes the core session, flushes leftover mailbox messages, and cleans up temporary settings files.
 
 ### `GeminiCliSdk.Runtime.CLI`

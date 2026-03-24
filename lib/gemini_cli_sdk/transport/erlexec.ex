@@ -7,6 +7,7 @@ defmodule GeminiCliSdk.Transport.Erlexec do
   """
 
   alias CliSubprocessCore.Transport, as: CoreTransport
+  alias GeminiCliSdk.Configuration
 
   @behaviour GeminiCliSdk.Transport
 
@@ -59,6 +60,19 @@ defmodule GeminiCliSdk.Transport.Erlexec do
   end
 
   defp normalize_start_opts(opts) do
-    Keyword.put_new(opts, :event_tag, @event_tag)
+    task_supervisor = Keyword.get_lazy(opts, :task_supervisor, &default_task_supervisor/0)
+
+    opts
+    |> Keyword.put(:task_supervisor, task_supervisor)
+    |> Keyword.put_new(:event_tag, @event_tag)
+    |> Keyword.put_new(:replay_stderr_on_subscribe?, true)
+    |> Keyword.put_new(:headless_timeout_ms, Configuration.transport_headless_timeout_ms())
+  end
+
+  defp default_task_supervisor do
+    case Application.ensure_all_started(:gemini_cli_sdk) do
+      {:ok, _started_apps} -> GeminiCliSdk.TaskSupervisor
+      {:error, _reason} -> CliSubprocessCore.TaskSupervisor
+    end
   end
 end
