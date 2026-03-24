@@ -12,7 +12,7 @@ graph TD
     B --> E[Runtime.CLI]
     E --> F[CliSubprocessCore.Session]
     F --> G[CliSubprocessCore.Transport]
-    G --> H[erlexec NIF]
+    G --> H[Shared transport internals]
     E --> I[CLI]
     E --> J[ArgBuilder]
     E --> K[Env]
@@ -23,7 +23,7 @@ graph TD
     B --> O[Configuration]
     C --> O
     D --> B
-    P[Transport / Transport.Erlexec] --> G
+    P[Transport / Transport.Erlexec adapter] --> G
 ```
 
 ## Data Flow
@@ -101,6 +101,9 @@ Its main responsibilities are:
 2. **next_fn**: Does selective receive on that session's internal runtime events, captures stderr, projects public Gemini events, and enforces idle timeouts.
 3. **after_fn**: Closes the core session, flushes leftover mailbox messages, and cleans up temporary settings files.
 
+The stream keeps the runtime-owned session tag inside its internal state and
+does not expose the raw core tag as public Gemini caller vocabulary.
+
 ### `GeminiCliSdk.Runtime.CLI`
 
 This is the Gemini runtime kit above `CliSubprocessCore.Session`.
@@ -118,7 +121,7 @@ remain core-owned.
 
 ### `GeminiCliSdk.Transport.Erlexec`
 
-This module is now the Gemini-named raw transport entrypoint backed by
+This module is now the Gemini-named compatibility transport entrypoint backed by
 `CliSubprocessCore.Transport`.
 
 It preserves Gemini's module path for raw transport access while the actual

@@ -80,8 +80,8 @@ opts = %GeminiCliSdk.Options{
 ## How It Works
 
 GeminiCliSdk starts a core-backed Gemini CLI session through
-`cli_subprocess_core`, whose transport layer uses
-[erlexec](https://hex.pm/packages/erlexec) for:
+`cli_subprocess_core`. That shared transport lane brings in
+[erlexec](https://hex.pm/packages/erlexec) transitively for:
 
 - Process group management (proper cleanup on halt)
 - Separate stdin/stdout/stderr streams
