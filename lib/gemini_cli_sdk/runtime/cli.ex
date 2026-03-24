@@ -1,6 +1,10 @@
 defmodule GeminiCliSdk.Runtime.CLI do
   @moduledoc """
   Session-oriented runtime kit for the shared Gemini CLI lane.
+
+  The tagged mailbox event atom is adapter detail. Higher-level callers should
+  consume `GeminiCliSdk.Stream` or projected `GeminiCliSdk.Types.*` events
+  instead of treating the underlying session tag as core identity.
   """
 
   alias CliSubprocessCore.Event, as: CoreEvent
@@ -14,6 +18,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias GeminiCliSdk.CLI.CommandSpec
 
   @runtime_metadata %{lane: :gemini_cli_sdk}
+  @default_session_event_tag :gemini_cli_sdk_runtime_cli
 
   defmodule ProjectionState do
     @moduledoc false
@@ -129,6 +134,10 @@ defmodule GeminiCliSdk.Runtime.CLI do
   @spec capabilities() :: [atom()]
   def capabilities, do: CoreGemini.capabilities()
 
+  @doc false
+  @spec session_event_tag() :: atom()
+  def session_event_tag, do: @default_session_event_tag
+
   @spec new_projection_state() :: map()
   def new_projection_state, do: %ProjectionState{}
 
@@ -230,7 +239,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       subscriber: Keyword.get(runtime_opts, :subscriber),
       metadata: metadata,
       session_event_tag:
-        Keyword.get(runtime_opts, :session_event_tag, :cli_subprocess_core_session),
+        Keyword.get(runtime_opts, :session_event_tag, @default_session_event_tag),
       prompt: prompt,
       command_spec: command_spec,
       output_format: options.output_format,
