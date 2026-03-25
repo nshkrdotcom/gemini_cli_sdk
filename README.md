@@ -14,6 +14,15 @@
 
 An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) -- build AI-powered applications with Google Gemini through a robust, idiomatic wrapper around the Gemini command-line interface.
 
+## Documentation Menu
+
+- `README.md` - installation, quick start, and runtime boundaries
+- `guides/getting-started.md` - first execution and session flows
+- `guides/options.md` - runtime and CLI option shaping
+- `guides/models.md` - Gemini model selection behavior
+- `guides/architecture.md` - shared core runtime ownership
+- `guides/testing.md` - local validation workflow
+
 ## Features
 
 - **Streaming** -- Lazy `Stream`-based API with typed event structs and backpressure
@@ -169,6 +178,27 @@ reports Gemini runtime availability in
 `namespaces: []` because Gemini currently composes through the common ASM
 surface only.
 
+## Centralized Model Selection
+
+`gemini_cli_sdk` now consumes model payloads resolved by
+`cli_subprocess_core`. The SDK no longer owns active fallback/defaulting
+policy for provider selection.
+
+Authoritative policy surface:
+
+- `CliSubprocessCore.ModelRegistry.resolve/3`
+- `CliSubprocessCore.ModelRegistry.validate/2`
+- `CliSubprocessCore.ModelRegistry.default_model/2`
+- `CliSubprocessCore.ModelRegistry.build_arg_payload/3`
+
+Gemini-side responsibility is limited to:
+
+- carrying the resolved `model_payload` on `GeminiCliSdk.Options`
+- projecting the resolved model for UX and metadata
+- rendering `--model` only when the resolved value is non-empty
+
+No repo-local Gemini model fallback remains.
+
 ## Documentation
 
 Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).
@@ -195,6 +225,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## Model Selection Contract
 
-`/home/home/p/g/n/gemini_cli_sdk` now consumes model payloads resolved by `/home/home/p/g/n/cli_subprocess_core`. The authoritative policy surface is `CliSubprocessCore.ModelRegistry.resolve/3`, `CliSubprocessCore.ModelRegistry.validate/2`, and `CliSubprocessCore.ModelRegistry.default_model/2`.
-
-The Gemini SDK no longer owns active fallback/defaulting policy. It renders `--model` only from a non-empty resolved payload and does not emit nil/null/blank model values.
+See [Centralized Model Selection](#centralized-model-selection). The Gemini SDK
+renders provider transport args from the shared resolved payload and does not
+emit nil/null/blank model values.
