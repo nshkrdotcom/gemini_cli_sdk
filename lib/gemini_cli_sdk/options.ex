@@ -15,7 +15,7 @@ defmodule GeminiCliSdk.Options do
   @type resume_value :: boolean() | String.t() | nil
 
   @type t :: %__MODULE__{
-          model_payload: CliSubprocessCore.ModelRegistry.Selection.t() | nil,
+          model_payload: CliSubprocessCore.ModelRegistry.selection() | nil,
           model: String.t() | nil,
           yolo: boolean(),
           approval_mode: approval_mode() | nil,
