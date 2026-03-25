@@ -29,6 +29,8 @@ defmodule GeminiCliSdk.Models do
   | `"fast"` | `fast_model()` |
   """
 
+  alias CliSubprocessCore.ModelRegistry
+
   @default_model "gemini-2.5-pro"
   @fast_model "gemini-2.5-flash"
 
@@ -42,13 +44,16 @@ defmodule GeminiCliSdk.Models do
   @doc "Returns the default (most capable) model name."
   @spec default_model() :: String.t()
   def default_model do
-    Application.get_env(:gemini_cli_sdk, :default_model, @default_model)
+    case ModelRegistry.default_model(:gemini) do
+      {:ok, model} -> model
+      {:error, _reason} -> Application.get_env(:gemini_cli_sdk, :default_model, @default_model)
+    end
   end
 
   @doc "Returns the fast model name, optimized for speed."
   @spec fast_model() :: String.t()
   def fast_model do
-    Application.get_env(:gemini_cli_sdk, :fast_model, @fast_model)
+    resolve("flash")
   end
 
   @doc "Returns a list of all built-in model identifiers."
@@ -77,7 +82,10 @@ defmodule GeminiCliSdk.Models do
   """
   @spec resolve(String.t()) :: String.t()
   def resolve(name) when is_binary(name) do
-    Map.get(@aliases, name, name)
+    case ModelRegistry.validate(:gemini, Map.get(@aliases, name, name)) do
+      {:ok, model} -> model.id
+      {:error, _reason} -> name
+    end
   end
 
   @doc """
@@ -98,11 +106,14 @@ defmodule GeminiCliSdk.Models do
       {:error, "Invalid model: 123. Must be a non-empty string or nil."}
   """
   @spec validate(term()) :: :ok | {:error, String.t()}
-  def validate(model) when is_binary(model) and byte_size(model) > 0, do: :ok
   def validate(nil), do: :ok
 
-  def validate(model),
-    do: {:error, "Invalid model: #{inspect(model)}. Must be a non-empty string or nil."}
+  def validate(model) do
+    case ModelRegistry.validate(:gemini, model) do
+      {:ok, _model} -> :ok
+      {:error, reason} -> {:error, "Invalid model: #{inspect(model)} (#{inspect(reason)})"}
+    end
+  end
 
   @doc "Returns `true` if the model name is a known built-in model or alias."
   @spec known?(String.t()) :: boolean()

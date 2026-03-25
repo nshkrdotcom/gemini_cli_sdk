@@ -29,8 +29,12 @@ defmodule GeminiCliSdk.ArgBuilder do
 
   defp add_output_format(args, _opts), do: args ++ ["--output-format", "stream-json"]
 
-  defp add_model(args, %Options{model: nil}), do: args
-  defp add_model(args, %Options{model: model}), do: args ++ ["--model", model]
+  defp add_model(args, %Options{} = opts) do
+    case resolved_model(opts) do
+      model when model in [nil, "", "nil", "null"] -> args
+      model -> args ++ ["--model", model]
+    end
+  end
 
   defp add_approval_mode(args, %Options{approval_mode: nil}), do: args
 
@@ -75,4 +79,10 @@ defmodule GeminiCliSdk.ArgBuilder do
 
   defp add_debug(args, %Options{debug: true}), do: args ++ ["--debug"]
   defp add_debug(args, _opts), do: args
+
+  defp resolved_model(%Options{model_payload: payload}) when is_map(payload) do
+    Map.get(payload, :resolved_model, Map.get(payload, "resolved_model"))
+  end
+
+  defp resolved_model(%Options{model: model}), do: model
 end

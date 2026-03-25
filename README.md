@@ -192,3 +192,9 @@ bash examples/run_all.sh
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+## Model Selection Contract
+
+`/home/home/p/g/n/gemini_cli_sdk` now consumes model payloads resolved by `/home/home/p/g/n/cli_subprocess_core`. The authoritative policy surface is `CliSubprocessCore.ModelRegistry.resolve/3`, `CliSubprocessCore.ModelRegistry.validate/2`, and `CliSubprocessCore.ModelRegistry.default_model/2`.
+
+The Gemini SDK no longer owns active fallback/defaulting policy. It renders `--model` only from a non-empty resolved payload and does not emit nil/null/blank model values.

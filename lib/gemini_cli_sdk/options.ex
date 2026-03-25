@@ -7,6 +7,7 @@ defmodule GeminiCliSdk.Options do
   """
 
   alias GeminiCliSdk.Configuration
+  alias CliSubprocessCore.ModelRegistry
 
   @default_timeout_ms Configuration.default_timeout_ms()
 
@@ -14,6 +15,7 @@ defmodule GeminiCliSdk.Options do
   @type resume_value :: boolean() | String.t() | nil
 
   @type t :: %__MODULE__{
+          model_payload: CliSubprocessCore.ModelRegistry.Selection.t() | nil,
           model: String.t() | nil,
           yolo: boolean(),
           approval_mode: approval_mode() | nil,
@@ -33,7 +35,8 @@ defmodule GeminiCliSdk.Options do
           max_stderr_buffer_bytes: pos_integer()
         }
 
-  defstruct model: nil,
+  defstruct model_payload: nil,
+            model: nil,
             yolo: false,
             approval_mode: nil,
             sandbox: false,
@@ -55,6 +58,8 @@ defmodule GeminiCliSdk.Options do
 
   @spec validate!(t()) :: t()
   def validate!(%__MODULE__{} = opts) do
+    opts = resolve_model_payload!(opts)
+
     cond do
       opts.yolo && opts.approval_mode != nil ->
         raise ArgumentError,
@@ -80,6 +85,21 @@ defmodule GeminiCliSdk.Options do
 
       true ->
         opts
+    end
+  end
+
+  defp resolve_model_payload!(%__MODULE__{} = opts) do
+    env_model =
+      Map.get(opts.env, "GEMINI_MODEL") ||
+        Map.get(opts.env, :GEMINI_MODEL) ||
+        System.get_env("GEMINI_MODEL")
+
+    case ModelRegistry.build_arg_payload(:gemini, opts.model, env_model: env_model) do
+      {:ok, payload} ->
+        %{opts | model_payload: payload, model: payload.resolved_model}
+
+      {:error, reason} ->
+        raise ArgumentError, "model resolution failed for :gemini: #{inspect(reason)}"
     end
   end
 end

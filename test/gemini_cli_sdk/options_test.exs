@@ -26,9 +26,12 @@ defmodule GeminiCliSdk.OptionsTest do
   end
 
   describe "validate!/1" do
-    test "returns opts unchanged when valid" do
+    test "resolves and validates model payload when valid" do
       opts = %Options{model: Models.fast_model()}
-      assert ^opts = Options.validate!(opts)
+      validated = Options.validate!(opts)
+
+      assert validated.model == Models.fast_model()
+      assert validated.model_payload.resolved_model == Models.fast_model()
     end
 
     test "raises when yolo and approval_mode are both set" do
@@ -50,7 +53,11 @@ defmodule GeminiCliSdk.OptionsTest do
     test "allows valid approval_modes" do
       for mode <- [:default, :auto_edit, :yolo, :plan] do
         opts = %Options{approval_mode: mode}
-        assert ^opts = Options.validate!(opts)
+        validated = Options.validate!(opts)
+
+        assert validated.approval_mode == mode
+        assert validated.model == Models.default_model()
+        assert validated.model_payload.resolved_model == Models.default_model()
       end
     end
 
@@ -64,7 +71,10 @@ defmodule GeminiCliSdk.OptionsTest do
 
     test "allows up to 5 include_directories" do
       opts = %Options{include_directories: Enum.map(1..5, &"dir#{&1}")}
-      assert ^opts = Options.validate!(opts)
+      validated = Options.validate!(opts)
+
+      assert validated.include_directories == opts.include_directories
+      assert validated.model == Models.default_model()
     end
 
     test "raises when timeout_ms is not positive" do

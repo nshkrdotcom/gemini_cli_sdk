@@ -243,6 +243,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       prompt: prompt,
       command_spec: command_spec,
       output_format: options.output_format,
+      model_payload: options.model_payload,
       model: options.model,
       yolo: options.yolo,
       approval_mode: options.approval_mode,
@@ -268,6 +269,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
   defp options_from_provider_opts(opts) do
     %Options{
+      model_payload: Keyword.get(opts, :model_payload),
       model: Keyword.get(opts, :model),
       yolo: Keyword.get(opts, :yolo, false),
       approval_mode: Keyword.get(opts, :approval_mode),
