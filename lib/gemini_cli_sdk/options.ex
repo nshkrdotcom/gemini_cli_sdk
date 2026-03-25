@@ -6,8 +6,8 @@ defmodule GeminiCliSdk.Options do
   setting. Fields with `nil` default are omitted from the generated argument list.
   """
 
-  alias GeminiCliSdk.Configuration
   alias CliSubprocessCore.ModelRegistry
+  alias GeminiCliSdk.Configuration
 
   @default_timeout_ms Configuration.default_timeout_ms()
 
