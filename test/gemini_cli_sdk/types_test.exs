@@ -158,7 +158,7 @@ defmodule GeminiCliSdk.TypesTest do
                Types.parse_event(json)
     end
 
-    test "handles extra fields gracefully (forward compatibility)" do
+    test "preserves extra fields for forward compatibility" do
       json =
         Jason.encode!(%{
           type: "init",
@@ -167,7 +167,8 @@ defmodule GeminiCliSdk.TypesTest do
           new_future_field: "ignored"
         })
 
-      assert {:ok, %Types.InitEvent{session_id: "abc"}} = Types.parse_event(json)
+      assert {:ok, %Types.InitEvent{session_id: "abc", extra: %{"new_future_field" => "ignored"}}} =
+               Types.parse_event(json)
     end
   end
 

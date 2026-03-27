@@ -111,6 +111,10 @@ end)
 | `Types.ErrorEvent` | Error with `severity` and `message` |
 | `Types.ResultEvent` | Final result with `status` and `stats` |
 
+All stream-event structs are now schema-backed. Known fields are normalized
+through `Zoi`, forward-compatible unknown fields are preserved in `extra`, and
+the event modules expose `to_map/1` for projection back to wire shape.
+
 ## Architecture
 
 GeminiCliSdk preserves its public API while running the common CLI session lane on

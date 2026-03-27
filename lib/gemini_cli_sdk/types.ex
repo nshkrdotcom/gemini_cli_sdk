@@ -45,7 +45,19 @@ defmodule GeminiCliSdk.Types do
 
   defp parse_event_data(%{"type" => type} = data) when is_map_key(@event_modules, type) do
     module = Map.fetch!(@event_modules, type)
-    {:ok, module.from_map(data)}
+
+    case module.parse(data) do
+      {:ok, event} ->
+        {:ok, event}
+
+      {:error, {_tag, details}} ->
+        {:error,
+         %GeminiCliSdk.Error{
+           kind: :invalid_event,
+           message: "Invalid #{type} event: #{details.message}",
+           cause: details
+         }}
+    end
   end
 
   defp parse_event_data(%{"type" => type}) do

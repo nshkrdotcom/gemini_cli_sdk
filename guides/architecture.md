@@ -190,3 +190,6 @@ Errors flow through two paths:
 
 Core runtime errors are projected back into Gemini `Types.ErrorEvent` values so
 callers do not need to adopt the normalized core event vocabulary.
+The Gemini event structs remain the ergonomic public surface, while the stream
+parser now treats `Zoi` as the source of truth for validation/normalization and
+stores unknown fields in `extra` for forward-compatible projection.

@@ -67,6 +67,10 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < "$GEMINI_TEST_STREAM_FILE"
 ```
 
+The stream event parser preserves unknown fields in each event struct's `extra`
+map. Fixture-based tests are a good place to assert that future wire fields
+round-trip without breaking the known contract.
+
 ## Wrapping the SDK
 
 Consider wrapping GeminiCliSdk behind a behaviour for easier testing:
