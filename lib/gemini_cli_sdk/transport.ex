@@ -7,8 +7,8 @@ defmodule GeminiCliSdk.Transport do
   """
 
   alias CliSubprocessCore.Transport, as: CoreTransport
-  alias GeminiCliSdk.Error
   alias GeminiCliSdk.Configuration
+  alias GeminiCliSdk.Error
 
   @type t :: pid()
   @type message :: binary()

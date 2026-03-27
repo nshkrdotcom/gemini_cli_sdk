@@ -232,7 +232,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       @runtime_metadata
       |> Map.merge(Keyword.get(runtime_opts, :metadata, %{}))
 
-    base_opts = [
+    [
       provider: :gemini,
       profile: Profile,
       subscriber: Keyword.get(runtime_opts, :subscriber),
