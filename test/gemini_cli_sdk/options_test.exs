@@ -92,5 +92,39 @@ defmodule GeminiCliSdk.OptionsTest do
         Options.validate!(opts)
       end
     end
+
+    test "treats an explicit model_payload as authoritative" do
+      {:ok, payload} =
+        CliSubprocessCore.ModelRegistry.build_arg_payload(:gemini, Models.fast_model(), [])
+
+      opts = %Options{model_payload: payload, model: Models.fast_model()}
+      validated = Options.validate!(opts)
+
+      assert validated.model_payload == payload
+      assert validated.model == Models.fast_model()
+    end
+
+    test "does not treat GEMINI_MODEL env defaults as active config when payload is explicit" do
+      {:ok, payload} =
+        CliSubprocessCore.ModelRegistry.build_arg_payload(:gemini, Models.fast_model(), [])
+
+      validated =
+        Options.validate!(%Options{
+          model_payload: payload,
+          env: %{"GEMINI_MODEL" => Models.default_model()}
+        })
+
+      assert validated.model_payload == payload
+      assert validated.model == Models.fast_model()
+    end
+
+    test "raises when raw model conflicts with an explicit model_payload" do
+      {:ok, payload} =
+        CliSubprocessCore.ModelRegistry.build_arg_payload(:gemini, Models.fast_model(), [])
+
+      assert_raise ArgumentError, ~r/model_payload_conflict/, fn ->
+        Options.validate!(%Options{model_payload: payload, model: Models.default_model()})
+      end
+    end
   end
 end

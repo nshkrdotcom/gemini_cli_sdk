@@ -111,7 +111,7 @@ defmodule GeminiCliSdk.Transport.ErlexecTest do
       {:ok, transport} =
         Erlexec.start(
           command: sh_path(),
-          args: ["-c", "echo hello"]
+          args: ["-c", "sleep 0.05; printf 'hello\\n'; sleep 0.2"]
         )
 
       ref1 = make_ref()
@@ -122,6 +122,7 @@ defmodule GeminiCliSdk.Transport.ErlexecTest do
 
       # Messages arrive with the latest tag (ref2)
       assert_receive {:gemini_sdk_transport, ^ref2, {:message, "hello"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref2, {:exit, _reason}}, 2_000
     end
   end
 

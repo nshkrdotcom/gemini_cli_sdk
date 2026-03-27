@@ -6,7 +6,7 @@ defmodule GeminiCliSdk.Options do
   setting. Fields with `nil` default are omitted from the generated argument list.
   """
 
-  alias CliSubprocessCore.ModelRegistry
+  alias CliSubprocessCore.ModelInput
   alias GeminiCliSdk.Configuration
 
   @default_timeout_ms Configuration.default_timeout_ms()
@@ -58,7 +58,7 @@ defmodule GeminiCliSdk.Options do
 
   @spec validate!(t()) :: t()
   def validate!(%__MODULE__{} = opts) do
-    opts = resolve_model_payload!(opts)
+    opts = normalize_model_input!(opts)
 
     cond do
       opts.yolo && opts.approval_mode != nil ->
@@ -88,18 +88,32 @@ defmodule GeminiCliSdk.Options do
     end
   end
 
-  defp resolve_model_payload!(%__MODULE__{} = opts) do
+  defp normalize_model_input!(%__MODULE__{} = opts) do
     env_model =
-      Map.get(opts.env, "GEMINI_MODEL") ||
-        Map.get(opts.env, :GEMINI_MODEL) ||
-        System.get_env("GEMINI_MODEL")
+      if explicit_model_payload?(opts) do
+        nil
+      else
+        Map.get(opts.env, "GEMINI_MODEL") ||
+          Map.get(opts.env, :GEMINI_MODEL) ||
+          System.get_env("GEMINI_MODEL")
+      end
 
-    case ModelRegistry.build_arg_payload(:gemini, opts.model, env_model: env_model) do
-      {:ok, payload} ->
-        %{opts | model_payload: payload, model: payload.resolved_model}
+    attrs =
+      Map.from_struct(opts)
+      |> maybe_put_env_model(env_model)
+
+    case ModelInput.normalize(:gemini, attrs) do
+      {:ok, normalized} ->
+        %{opts | model_payload: normalized.selection, model: normalized.selection.resolved_model}
 
       {:error, reason} ->
         raise ArgumentError, "model resolution failed for :gemini: #{inspect(reason)}"
     end
   end
+
+  defp maybe_put_env_model(attrs, nil), do: attrs
+  defp maybe_put_env_model(attrs, value), do: Map.put(attrs, :env_model, value)
+
+  defp explicit_model_payload?(%__MODULE__{model_payload: payload}) when is_map(payload), do: true
+  defp explicit_model_payload?(_opts), do: false
 end

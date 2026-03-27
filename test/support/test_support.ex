@@ -1,6 +1,8 @@
 defmodule GeminiCliSdk.TestSupport do
   @moduledoc false
 
+  @global_state_lock {:gemini_cli_sdk_test, :global_state}
+
   @doc """
   Creates a unique temporary directory. Returns the absolute path.
   Caller is responsible for cleanup via `File.rm_rf/1`.
@@ -35,21 +37,23 @@ defmodule GeminiCliSdk.TestSupport do
   the original values.
   """
   def with_env(env, fun) when is_function(fun, 0) do
-    saved = Enum.map(env, fn {k, _} -> {k, System.get_env(k)} end)
+    :global.trans(@global_state_lock, fn ->
+      saved = Enum.map(env, fn {k, _} -> {k, System.get_env(k)} end)
 
-    Enum.each(env, fn
-      {k, nil} -> System.delete_env(k)
-      {k, v} -> System.put_env(k, v)
-    end)
-
-    try do
-      fun.()
-    after
-      Enum.each(saved, fn
+      Enum.each(env, fn
         {k, nil} -> System.delete_env(k)
         {k, v} -> System.put_env(k, v)
       end)
-    end
+
+      try do
+        fun.()
+      after
+        Enum.each(saved, fn
+          {k, nil} -> System.delete_env(k)
+          {k, v} -> System.put_env(k, v)
+        end)
+      end
+    end)
   end
 
   @doc """

@@ -1,8 +1,19 @@
 # Models
 
-The `GeminiCliSdk.Models` module is the single source of truth for model names
-throughout the SDK. It provides built-in defaults, aliases, validation, and
-runtime configuration.
+`GeminiCliSdk.Models` remains the convenience reader for Gemini model names, but
+active model selection now resolves through `cli_subprocess_core`.
+
+The authoritative mixed-input boundary is
+`CliSubprocessCore.ModelInput.normalize/3`.
+
+That means:
+
+- `GeminiCliSdk.Options.validate!/1` treats explicit `model_payload` as
+  authoritative
+- raw `model` input is resolved through the shared core only when a payload was
+  not already supplied
+- repo-local `GEMINI_MODEL` env defaults are fallback inputs, not a second
+  post-payload resolution path
 
 ## Available Models
 

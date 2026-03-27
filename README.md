@@ -190,12 +190,15 @@ Authoritative policy surface:
 - `CliSubprocessCore.ModelRegistry.validate/2`
 - `CliSubprocessCore.ModelRegistry.default_model/2`
 - `CliSubprocessCore.ModelRegistry.build_arg_payload/3`
+- `CliSubprocessCore.ModelInput.normalize/3`
 
 Gemini-side responsibility is limited to:
 
 - carrying the resolved `model_payload` on `GeminiCliSdk.Options`
 - projecting the resolved model for UX and metadata
 - rendering `--model` only when the resolved value is non-empty
+- treating repo-local env defaults as fallback inputs only when no explicit
+  payload was supplied
 
 No repo-local Gemini model fallback remains.
 
