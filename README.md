@@ -29,7 +29,7 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Synchronous** -- Simple `{:ok, text} | {:error, error}` for request/response patterns
 - **Session Management** -- List, resume, and delete conversation sessions
 - **Shared Core Runtime** -- Streaming and one-shot command execution now run on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
-- **Subprocess Safety** -- Built on `cli_subprocess_core`, which owns the raw transport lane and the transitive `erlexec` dependency used for cleanup and raw process control
+- **Subprocess Safety** -- Built on `cli_subprocess_core`, which owns the raw transport lane and the native subprocess runtime used for cleanup and raw process control
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
 - **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O

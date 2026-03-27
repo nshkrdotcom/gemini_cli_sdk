@@ -1,21 +1,189 @@
 defmodule GeminiCliSdk.TransportTest do
   use ExUnit.Case, async: false
 
+  alias CliSubprocessCore.ProcessExit
   alias GeminiCliSdk.Transport
 
   defp sh_path, do: System.find_executable("sh") || "sh"
 
-  test "top-level transport entrypoint preserves Gemini tagged subscriber events" do
-    ref = make_ref()
+  describe "start/stop lifecycle" do
+    test "starts transport and receives exit event" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "exit 0"]
+        )
 
-    {:ok, _transport} =
-      Transport.start(
-        command: sh_path(),
-        args: ["-c", "printf 'hello\\n'"],
-        subscriber: {self(), ref}
-      )
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
+    end
 
-    assert_receive {:gemini_sdk_transport, ^ref, {:message, "hello"}}, 2_000
-    assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
+    test "start/1 wraps init failures as tagged transport errors" do
+      assert {:error, {:transport, _reason}} =
+               Transport.start(command: sh_path(), args: ["-c", "echo ok"], subscriber: :bad)
+    end
+  end
+
+  describe "stdout line buffering" do
+    test "streams stdout messages line by line" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "printf 'line1\\nline2\\nline3\\n'"]
+        )
+
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:message, "line1"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref, {:message, "line2"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref, {:message, "line3"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
+    end
+
+    test "flushes partial line on process exit" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "printf 'no-newline'"]
+        )
+
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:message, "no-newline"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
+    end
+  end
+
+  describe "stderr capture" do
+    test "captures stderr and emits it" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "echo 'error output' >&2"]
+        )
+
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:stderr, stderr}}, 2_000
+      assert stderr =~ "error output"
+    end
+
+    test "caps stderr buffer to configured tail size" do
+      ref = make_ref()
+
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "printf '1234567890ABCDEFGHIJ' >&2"],
+          max_stderr_buffer_size: 8,
+          subscriber: {self(), ref}
+        )
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:stderr, _stderr}}, 2_000
+      assert byte_size(Transport.stderr(transport)) <= 8
+    end
+  end
+
+  describe "exit code propagation" do
+    test "propagates non-zero exit code" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "exit 42"]
+        )
+
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, %ProcessExit{} = exit}}, 2_000
+      assert exit.status == :exit
+      assert exit.code == 42
+      assert exit.reason == {:exit_status, 42 * 256}
+    end
+  end
+
+  describe "subscriber management" do
+    test "re-subscribing same pid updates the tag" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "sleep 0.05; printf 'hello\\n'; sleep 0.2"]
+        )
+
+      ref1 = make_ref()
+      ref2 = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref1)
+      # Re-subscribing same PID replaces the tag
+      :ok = Transport.subscribe(transport, self(), ref2)
+
+      # Messages arrive with the latest tag (ref2)
+      assert_receive {:gemini_sdk_transport, ^ref2, {:message, "hello"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref2, {:exit, _reason}}, 2_000
+    end
+  end
+
+  describe "graceful shutdown" do
+    test "close/1 terminates the transport" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "sleep 10"]
+        )
+
+      monitor_ref = Process.monitor(transport)
+      assert :ok = Transport.close(transport)
+      assert_receive {:DOWN, ^monitor_ref, :process, ^transport, _}, 2_000
+    end
+  end
+
+  describe "force_close/1" do
+    test "kills the transport" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "sleep 10"]
+        )
+
+      monitor_ref = Process.monitor(transport)
+      assert :ok = Transport.force_close(transport)
+      assert_receive {:DOWN, ^monitor_ref, :process, ^transport, _}, 2_000
+    end
+  end
+
+  describe "end_input/1" do
+    test "sends EOF to stdin-driven commands" do
+      cat = System.find_executable("cat") || "cat"
+
+      {:ok, transport} = Transport.start(command: cat, args: [])
+      ref = make_ref()
+      :ok = Transport.subscribe(transport, self(), ref)
+
+      assert :ok = Transport.send(transport, "echo me")
+      assert :ok = Transport.end_input(transport)
+
+      assert_receive {:gemini_sdk_transport, ^ref, {:message, "echo me"}}, 2_000
+      assert_receive {:gemini_sdk_transport, ^ref, {:exit, _reason}}, 2_000
+    end
+  end
+
+  describe "post-exit behavior" do
+    test "returns typed not_connected errors after transport exits" do
+      {:ok, transport} =
+        Transport.start(
+          command: sh_path(),
+          args: ["-c", "exit 0"]
+        )
+
+      monitor_ref = Process.monitor(transport)
+      assert_receive {:DOWN, ^monitor_ref, :process, ^transport, _reason}, 2_000
+
+      assert {:error, {:transport, _}} = Transport.send(transport, "echo me")
+      assert {:error, {:transport, _}} = Transport.end_input(transport)
+      assert :disconnected = Transport.status(transport)
+    end
   end
 end

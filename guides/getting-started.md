@@ -13,8 +13,8 @@ npm install -g @google/gemini-cli
 gemini auth login
 ```
 
-3. `cli_subprocess_core` brings in `erlexec` transitively, so a C compiler is
-   required for the native build. On Debian/Ubuntu:
+3. `cli_subprocess_core` brings in a native subprocess dependency transitively,
+   so a C compiler is required for the native build. On Debian/Ubuntu:
 
 ```bash
 sudo apt install build-essential
@@ -80,8 +80,8 @@ opts = %GeminiCliSdk.Options{
 ## How It Works
 
 GeminiCliSdk starts a core-backed Gemini CLI session through
-`cli_subprocess_core`. That shared transport lane brings in
-[erlexec](https://hex.pm/packages/erlexec) transitively for:
+`cli_subprocess_core`. That shared transport lane brings in a native subprocess
+runtime transitively for:
 
 - Process group management (proper cleanup on halt)
 - Separate stdin/stdout/stderr streams

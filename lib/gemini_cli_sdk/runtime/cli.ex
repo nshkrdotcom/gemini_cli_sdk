@@ -66,7 +66,6 @@ defmodule GeminiCliSdk.Runtime.CLI do
           | {:options, Options.t()}
           | {:subscriber, pid() | {pid(), reference() | :legacy}}
           | {:metadata, map()}
-          | {:transport_module, module()}
           | {:session_event_tag, atom()}
 
   @spec start_session([start_option()]) ::
@@ -84,7 +83,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
           options,
           command_spec,
           settings_path,
-          Keyword.take(opts, [:subscriber, :metadata, :transport_module, :session_event_tag])
+          Keyword.take(opts, [:subscriber, :metadata, :session_event_tag])
         )
 
       case Session.start_session(session_opts) do
@@ -260,11 +259,6 @@ defmodule GeminiCliSdk.Runtime.CLI do
       headless_timeout_ms: :infinity,
       max_stderr_buffer_size: options.max_stderr_buffer_bytes
     ]
-
-    case Keyword.get(runtime_opts, :transport_module) do
-      nil -> base_opts
-      transport_module -> Keyword.put(base_opts, :transport_module, transport_module)
-    end
   end
 
   defp options_from_provider_opts(opts) do

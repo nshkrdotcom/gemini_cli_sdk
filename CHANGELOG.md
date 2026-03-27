@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Runtime ownership and release docs now describe the final Phase 4 boundary:
-  `cli_subprocess_core` owns Gemini subprocess lifecycle and `erlexec`,
+  `cli_subprocess_core` owns Gemini subprocess lifecycle and `built-in transport`,
   `gemini_cli_sdk` owns Gemini-specific invocation and projection logic, and
   ASM composition remains common-surface-only with `namespaces: []`.
 
@@ -16,6 +16,6 @@ Initial release.
 - Session management: list, resume, delete
 - 6 typed event structs: init, message, tool_use, tool_result, error, result
 - Full CLI options support: model, yolo, approval_mode, sandbox, extensions, etc.
-- Subprocess management via erlexec with process groups and signal delivery
+- Subprocess management via built-in transport with process groups and signal delivery
 - Structured error handling with exit code mapping
 - OTP application with TaskSupervisor

@@ -23,7 +23,7 @@ graph TD
     B --> O[Configuration]
     C --> O
     D --> B
-    P[Transport / Transport.Erlexec adapter] --> G
+    P[GeminiCliSdk.Transport adapter] --> G
 ```
 
 ## Data Flow
@@ -119,13 +119,13 @@ The runtime kit uses a small Gemini invocation profile for command
 construction only. Parsing, event normalization, and subprocess ownership
 remain core-owned.
 
-### `GeminiCliSdk.Transport.Erlexec`
+### `GeminiCliSdk.Transport`
 
-This module is now the Gemini-named compatibility transport entrypoint backed by
+This module is the Gemini-facing raw transport entrypoint backed by
 `CliSubprocessCore.Transport`.
 
-It preserves Gemini's module path for raw transport access while the actual
-transport implementation lives in `cli_subprocess_core`.
+It preserves Gemini's public transport vocabulary while the actual transport
+implementation lives in `cli_subprocess_core`.
 
 ### `GeminiCliSdk.Types`
 
