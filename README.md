@@ -206,6 +206,11 @@ Gemini-side responsibility is limited to:
 
 No repo-local Gemini model fallback remains.
 
+`GeminiCliSdk.Options.validate!/1` canonicalizes explicit payloads through the
+shared core boundary. A `CliSubprocessCore.ModelRegistry.Selection` is the
+preferred form, and `Map.from_struct(selection)` is normalized back into the
+same canonical payload when callers already have a serialized struct map.
+
 ## Documentation
 
 Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).

@@ -6,11 +6,12 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 %GeminiCliSdk.Options{
+  model_payload: nil,              # Shared core Selection (or a canonicalizable map form)
   model: nil,                      # Model name (e.g., Models.fast_model(), Models.default_model())
   yolo: false,                     # Skip all confirmation prompts
-  approval_mode: nil,              # "auto-edit" | "full-auto" | nil
+  approval_mode: nil,              # :default | :auto_edit | :yolo | :plan | nil
   sandbox: false,                  # Run in sandbox mode
-  resume: nil,                     # Session ID to resume
+  resume: nil,                     # true | session_id | nil
   extensions: [],                  # List of extensions to enable
   include_directories: [],         # Directories to include in context (max 5)
   allowed_tools: [],               # Restrict to specific tools
@@ -21,7 +22,8 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
   env: %{},                        # Extra environment variables
   settings: nil,                   # Settings map (written to temp settings.json)
   system_prompt: nil,              # System prompt override
-  timeout_ms: 300_000              # Timeout in milliseconds (default 5 minutes)
+  timeout_ms: 300_000,             # Timeout in milliseconds (default 5 minutes)
+  max_stderr_buffer_bytes: 65_536  # Max buffered stderr before truncation
 }
 ```
 
@@ -34,6 +36,25 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
 {:ok, response} = GeminiCliSdk.run("Quick question", opts)
 ```
+
+### Shared Core Model Payload
+
+```elixir
+{:ok, payload} =
+  CliSubprocessCore.ModelRegistry.build_arg_payload(
+    :gemini,
+    GeminiCliSdk.Models.fast_model(),
+    []
+  )
+
+opts = %GeminiCliSdk.Options{model_payload: payload}
+{:ok, response} = GeminiCliSdk.run("Quick question", opts)
+```
+
+`GeminiCliSdk.Options.validate!/1` canonicalizes explicit payloads through the
+shared core boundary. A real `CliSubprocessCore.ModelRegistry.Selection` is the
+preferred form, but `Map.from_struct(payload)` is normalized back into the same
+canonical selection while preserving forward-compatible extra fields.
 
 ### Auto-Approval (YOLO Mode)
 
@@ -48,10 +69,13 @@ opts = %GeminiCliSdk.Options{yolo: true}
 
 ```elixir
 # Auto-approve file edits
-opts = %GeminiCliSdk.Options{approval_mode: "auto-edit"}
+opts = %GeminiCliSdk.Options{approval_mode: :auto_edit}
 
 # Full auto-approval
-opts = %GeminiCliSdk.Options{approval_mode: "full-auto"}
+opts = %GeminiCliSdk.Options{approval_mode: :yolo}
+
+# Backwards-compatible string aliases are still accepted at validation time
+GeminiCliSdk.Options.validate!(%GeminiCliSdk.Options{approval_mode: "auto-edit"})
 ```
 
 ### Sandbox Mode
@@ -147,7 +171,7 @@ Options are validated when passed to `execute/2` or `run/2`. Invalid combination
 
 ```elixir
 # This raises ArgumentError -- yolo and approval_mode conflict
-%GeminiCliSdk.Options{yolo: true, approval_mode: "auto-edit"}
+%GeminiCliSdk.Options{yolo: true, approval_mode: :auto_edit}
 |> GeminiCliSdk.Options.validate!()
 ```
 
@@ -160,7 +184,7 @@ Options are validated when passed to `execute/2` or `run/2`. Invalid combination
 | `approval_mode` | `--approval-mode` |
 | `sandbox` | `--sandbox` |
 | `resume` | `--resume` |
-| `extensions` | `--extension` (repeated) |
+| `extensions` | `--extensions` (repeated) |
 | `include_directories` | `--include-directories` (comma-separated) |
 | `allowed_tools` | `--allowed-tools` (comma-separated) |
 | `allowed_mcp_server_names` | `--allowed-mcp-server-names` (comma-separated) |

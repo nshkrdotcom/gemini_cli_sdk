@@ -8,11 +8,12 @@ defmodule GeminiCliSdk.Options do
 
   alias CliSubprocessCore.ModelInput
   alias GeminiCliSdk.Configuration
+  alias GeminiCliSdk.Schema.Options, as: OptionsSchema
 
   @default_timeout_ms Configuration.default_timeout_ms()
 
   @type approval_mode :: :default | :auto_edit | :yolo | :plan
-  @type resume_value :: boolean() | String.t() | nil
+  @type resume_value :: true | String.t() | nil
 
   @type t :: %__MODULE__{
           model_payload: CliSubprocessCore.ModelRegistry.selection() | nil,
@@ -54,39 +55,37 @@ defmodule GeminiCliSdk.Options do
             timeout_ms: @default_timeout_ms,
             max_stderr_buffer_bytes: Configuration.max_stderr_buffer_size()
 
-  @valid_approval_modes [:default, :auto_edit, :yolo, :plan]
-
   @spec validate!(t()) :: t()
   def validate!(%__MODULE__{} = opts) do
-    opts = normalize_model_input!(opts)
+    case OptionsSchema.parse(opts) do
+      {:ok, parsed} ->
+        parsed
+        |> validate_cross_field_conflicts!()
+        |> normalize_model_input!()
 
-    cond do
-      opts.yolo && opts.approval_mode != nil ->
-        raise ArgumentError,
-              "Cannot set both :yolo and :approval_mode. " <>
-                "Use approval_mode: :yolo instead of yolo: true"
-
-      opts.approval_mode != nil && opts.approval_mode not in @valid_approval_modes ->
-        raise ArgumentError,
-              "Invalid approval_mode: #{inspect(opts.approval_mode)}. " <>
-                "Must be one of: #{inspect(@valid_approval_modes)}"
-
-      length(opts.include_directories) > Configuration.max_include_directories() ->
-        raise ArgumentError,
-              "Maximum #{Configuration.max_include_directories()} include_directories allowed, got #{length(opts.include_directories)}"
-
-      opts.timeout_ms <= 0 ->
-        raise ArgumentError,
-              "timeout_ms must be positive, got #{opts.timeout_ms}"
-
-      opts.max_stderr_buffer_bytes <= 0 ->
-        raise ArgumentError,
-              "max_stderr_buffer_bytes must be positive, got #{opts.max_stderr_buffer_bytes}"
-
-      true ->
-        opts
+      {:error, {:invalid_options, details}} ->
+        raise ArgumentError, validation_message(details)
     end
   end
+
+  defp validate_cross_field_conflicts!(%__MODULE__{} = opts) do
+    if opts.yolo && opts.approval_mode != nil do
+      raise ArgumentError,
+            "Cannot set both :yolo and :approval_mode. " <>
+              "Use approval_mode: :yolo instead of yolo: true"
+    else
+      opts
+    end
+  end
+
+  defp validation_message(%{issues: [%{path: path} | _rest], message: message})
+       when is_list(path) and path != [] do
+    path_label = Enum.map_join(path, ".", &to_string/1)
+
+    "#{path_label}: #{message}"
+  end
+
+  defp validation_message(%{message: message}), do: message
 
   defp normalize_model_input!(%__MODULE__{} = opts) do
     env_model =

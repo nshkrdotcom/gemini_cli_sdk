@@ -61,6 +61,13 @@ defmodule GeminiCliSdk.OptionsTest do
       end
     end
 
+    test "normalizes approval_mode string aliases through schema-backed parsing" do
+      validated = Options.validate!(%Options{approval_mode: "auto-edit"})
+
+      assert validated.approval_mode == :auto_edit
+      assert validated.model == Models.default_model()
+    end
+
     test "raises when include_directories exceeds 5" do
       opts = %Options{include_directories: Enum.map(1..6, &"dir#{&1}")}
 
@@ -90,6 +97,12 @@ defmodule GeminiCliSdk.OptionsTest do
 
       assert_raise ArgumentError, ~r/timeout_ms must be positive/, fn ->
         Options.validate!(opts)
+      end
+    end
+
+    test "raises when allowed_tools is not a string list" do
+      assert_raise ArgumentError, ~r/allowed_tools/, fn ->
+        Options.validate!(%Options{allowed_tools: :read_file})
       end
     end
 
