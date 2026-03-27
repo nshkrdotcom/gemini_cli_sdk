@@ -6,6 +6,7 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
   @paths [
     "lib",
     "test",
+    "mix.exs",
     "README.md",
     "guides"
   ]

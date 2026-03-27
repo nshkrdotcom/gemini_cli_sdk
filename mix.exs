@@ -147,8 +147,7 @@ defmodule GeminiCliSdk.MixProject do
           GeminiCliSdk.Runtime.CLI,
           GeminiCliSdk.Command,
           GeminiCliSdk.Session,
-          GeminiCliSdk.Transport,
-          GeminiCliSdk.Transport.Erlexec
+          GeminiCliSdk.Transport
         ]
       ],
       before_closing_head_tag: &before_closing_head_tag/1,
