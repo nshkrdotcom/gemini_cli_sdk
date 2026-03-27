@@ -208,8 +208,8 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
       {:ok,
        CliSubprocessCore.Command.new(
-         command_spec.program,
-         GeminiCLI.command_args(command_spec, args),
+         GeminiCLI.to_core_command_spec(command_spec),
+         args,
          cwd: Keyword.get(opts, :cwd, File.cwd!()),
          env: Keyword.get(opts, :env, %{})
        )}

@@ -1,21 +1,28 @@
 defmodule GeminiCliSdk.CLI do
   @moduledoc """
-  Resolves the Gemini CLI binary location.
+  Resolves the Gemini CLI binary location through the shared
+  `CliSubprocessCore.ProviderCLI` policy.
 
   Resolution order:
 
   1. `GEMINI_CLI_PATH` environment variable (explicit path)
   2. `gemini` on system `PATH` (e.g. globally installed via npm)
   3. npm global bin directory (`npm prefix -g`/bin/gemini)
-  4. `npx` fallback — runs `npx --yes gemini` (auto-downloads on first use)
+  4. `npx` fallback — runs
+     `npx --yes --package @google/gemini-cli gemini`
 
   Set `GEMINI_NO_NPX=1` to disable the npx fallback.
   """
 
+  alias CliSubprocessCore.CommandSpec, as: CoreCommandSpec
+  alias CliSubprocessCore.ProviderCLI
+  alias CliSubprocessCore.ProviderCLI.Error, as: ProviderCLIError
   alias GeminiCliSdk.Error
 
   defmodule CommandSpec do
     @moduledoc "Describes a resolved CLI binary: the program path and any argv prefix."
+
+    alias CliSubprocessCore.CommandSpec, as: CoreCommandSpec
 
     @enforce_keys [:program]
     defstruct program: "", argv_prefix: []
@@ -24,13 +31,29 @@ defmodule GeminiCliSdk.CLI do
             program: String.t(),
             argv_prefix: [String.t()]
           }
+
+    @spec from_core(CoreCommandSpec.t()) :: t()
+    def from_core(%CoreCommandSpec{} = spec) do
+      %__MODULE__{
+        program: spec.program,
+        argv_prefix: spec.argv_prefix
+      }
+    end
+
+    @spec to_core(t()) :: CoreCommandSpec.t()
+    def to_core(%__MODULE__{} = spec) do
+      CoreCommandSpec.new(spec.program, argv_prefix: spec.argv_prefix)
+    end
   end
 
   @spec resolve() :: {:ok, CommandSpec.t()} | {:error, Error.t()}
   def resolve do
-    case System.get_env("GEMINI_CLI_PATH") do
-      nil -> resolve_auto()
-      path -> resolve_explicit(path)
+    case ProviderCLI.resolve(:gemini) do
+      {:ok, %CoreCommandSpec{} = spec} ->
+        {:ok, CommandSpec.from_core(spec)}
+
+      {:error, %ProviderCLIError{} = error} ->
+        {:error, translate_provider_cli_error(error)}
     end
   end
 
@@ -43,112 +66,24 @@ defmodule GeminiCliSdk.CLI do
   end
 
   @spec command_args(CommandSpec.t(), [String.t()]) :: [String.t()]
-  def command_args(%CommandSpec{argv_prefix: prefix}, args) do
-    prefix ++ args
+  def command_args(%CommandSpec{} = spec, args) do
+    spec
+    |> CommandSpec.to_core()
+    |> CoreCommandSpec.command_args(args)
   end
 
-  defp resolve_explicit(path) do
-    cond do
-      not File.exists?(path) ->
-        {:error,
-         Error.new(
-           kind: :cli_not_found,
-           message: "GEMINI_CLI_PATH points to non-existent file: #{path}"
-         )}
-
-      not executable?(path) ->
-        {:error,
-         Error.new(
-           kind: :cli_not_found,
-           message: "GEMINI_CLI_PATH points to non-executable file: #{path}"
-         )}
-
-      true ->
-        {:ok, %CommandSpec{program: path}}
-    end
+  @doc false
+  @spec to_core_command_spec(CommandSpec.t()) :: CoreCommandSpec.t()
+  def to_core_command_spec(%CommandSpec{} = spec) do
+    CommandSpec.to_core(spec)
   end
 
-  defp resolve_auto do
-    with :miss <- find_on_path(),
-         :miss <- find_in_npm_global(),
-         :miss <- find_via_npx() do
-      {:error,
-       Error.new(
-         kind: :cli_not_found,
-         message:
-           "Gemini CLI not found. Install with: npm install -g @google/gemini-cli " <>
-             "— or ensure npx is available for automatic resolution."
-       )}
-    end
-  end
-
-  # Strategy 1: System PATH
-  defp find_on_path do
-    case System.find_executable("gemini") do
-      nil -> :miss
-      path -> {:ok, %CommandSpec{program: path}}
-    end
-  end
-
-  # Strategy 2: npm global bin directory
-  defp find_in_npm_global do
-    with {:ok, npm_path} <- find_npm(),
-         {:ok, prefix} <- npm_global_prefix(npm_path) do
-      gemini_bin = Path.join([prefix, "bin", "gemini"])
-
-      if File.exists?(gemini_bin) and executable?(gemini_bin) do
-        {:ok, %CommandSpec{program: gemini_bin}}
-      else
-        :miss
-      end
-    else
-      _ -> :miss
-    end
-  end
-
-  # Strategy 3: npx fallback (auto-downloads if needed)
-  defp find_via_npx do
-    if npx_disabled?() do
-      :miss
-    else
-      case System.find_executable("npx") do
-        nil ->
-          :miss
-
-        npx_path ->
-          {:ok,
-           %CommandSpec{
-             program: npx_path,
-             argv_prefix: ["--yes", "--package", "@google/gemini-cli", "gemini"]
-           }}
-      end
-    end
-  end
-
-  defp find_npm do
-    case System.find_executable("npm") do
-      nil -> :miss
-      path -> {:ok, path}
-    end
-  end
-
-  defp npm_global_prefix(npm_path) do
-    case System.cmd(npm_path, ["prefix", "-g"], stderr_to_stdout: true) do
-      {output, 0} -> {:ok, String.trim(output)}
-      _ -> :miss
-    end
-  rescue
-    _ -> :miss
-  end
-
-  defp npx_disabled? do
-    System.get_env("GEMINI_NO_NPX") in ["1", "true"]
-  end
-
-  defp executable?(path) do
-    case File.stat(path) do
-      {:ok, %File.Stat{mode: mode}} -> Bitwise.band(mode, 0o111) != 0
-      _ -> false
-    end
+  defp translate_provider_cli_error(%ProviderCLIError{} = error) do
+    Error.new(
+      kind: error.kind,
+      message: error.message,
+      cause: error.cause,
+      context: %{provider: error.provider}
+    )
   end
 end

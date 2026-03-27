@@ -7,6 +7,8 @@
 
 IO.puts("=== Synchronous Execution ===\n")
 
+timeout_ms = 120_000
+
 prompts = [
   "What is pattern matching in Elixir? Answer in one sentence.",
   "What is a GenServer? Answer in one sentence.",
@@ -16,7 +18,7 @@ prompts = [
 for {prompt, idx} <- Enum.with_index(prompts, 1) do
   IO.puts("#{idx}. #{prompt}")
 
-  opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: 30_000}
+  opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: timeout_ms}
 
   case GeminiCliSdk.run(prompt, opts) do
     {:ok, response} ->

@@ -7,6 +7,8 @@
 
 IO.puts("=== Model Selection ===\n")
 
+timeout_ms = 120_000
+
 models = GeminiCliSdk.Models.available_models()
 
 for model <- models do
@@ -14,7 +16,7 @@ for model <- models do
 
   opts = %GeminiCliSdk.Options{
     model: model,
-    timeout_ms: 60_000
+    timeout_ms: timeout_ms
   }
 
   case GeminiCliSdk.run("What model are you? Reply in one sentence.", opts) do

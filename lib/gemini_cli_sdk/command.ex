@@ -29,7 +29,7 @@ defmodule GeminiCliSdk.Command do
   def run(%CommandSpec{} = command, args, opts) when is_list(args) and is_list(opts) do
     timeout = Keyword.get(opts, :timeout, Configuration.command_timeout_ms())
     command_args = CLI.command_args(command, args)
-    invocation = build_invocation(command, command_args, opts)
+    invocation = build_invocation(command, args, opts)
 
     case CoreCommand.run(invocation,
            stdin: Keyword.get(opts, :stdin),
@@ -44,10 +44,10 @@ defmodule GeminiCliSdk.Command do
     end
   end
 
-  defp build_invocation(%CommandSpec{} = command, command_args, opts) do
+  defp build_invocation(%CommandSpec{} = command, args, opts) do
     CoreCommand.new(
-      command.program,
-      command_args,
+      CLI.to_core_command_spec(command),
+      args,
       cwd: Keyword.get(opts, :cd),
       env: Env.build_cli_env(normalize_env(Keyword.get(opts, :env)))
     )

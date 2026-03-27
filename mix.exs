@@ -90,39 +90,39 @@ defmodule GeminiCliSdk.MixProject do
       assets: %{"assets" => "assets"},
       logo: "assets/gemini_cli_sdk.svg",
       extras: [
-        "README.md",
-        "guides/getting-started.md",
-        "guides/streaming.md",
-        "guides/synchronous.md",
-        "guides/options.md",
-        "guides/models.md",
-        "guides/configuration.md",
-        "guides/sessions.md",
-        "guides/error-handling.md",
-        "guides/architecture.md",
-        "guides/testing.md",
-        "CHANGELOG.md",
-        "LICENSE"
+        "README.md": [title: "Overview"],
+        "guides/getting-started.md": [title: "Getting Started"],
+        "guides/streaming.md": [title: "Streaming"],
+        "guides/synchronous.md": [title: "Synchronous Execution"],
+        "guides/options.md": [title: "Options"],
+        "guides/models.md": [title: "Models"],
+        "guides/configuration.md": [title: "Configuration"],
+        "guides/sessions.md": [title: "Sessions"],
+        "guides/error-handling.md": [title: "Error Handling"],
+        "guides/architecture.md": [title: "Architecture"],
+        "guides/testing.md": [title: "Testing"],
+        "CHANGELOG.md": [title: "Changelog"],
+        LICENSE: [title: "License"]
       ],
       groups_for_extras: [
-        Introduction: [
-          "README.md",
-          "guides/getting-started.md"
-        ],
-        Guides: [
-          "guides/streaming.md",
-          "guides/synchronous.md",
+        "Project Overview": ["README.md"],
+        Foundations: [
+          "guides/getting-started.md",
           "guides/options.md",
           "guides/models.md",
-          "guides/configuration.md",
+          "guides/configuration.md"
+        ],
+        Runtime: [
+          "guides/streaming.md",
+          "guides/synchronous.md",
           "guides/sessions.md",
           "guides/error-handling.md"
         ],
-        Advanced: [
+        Operations: [
           "guides/architecture.md",
           "guides/testing.md"
         ],
-        "Release Notes": ["CHANGELOG.md", "LICENSE"]
+        Reference: ["CHANGELOG.md", "LICENSE"]
       ],
       groups_for_modules: [
         "Public API": [GeminiCliSdk],
