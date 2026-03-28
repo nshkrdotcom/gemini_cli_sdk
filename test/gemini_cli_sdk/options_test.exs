@@ -1,11 +1,13 @@
 defmodule GeminiCliSdk.OptionsTest do
   use ExUnit.Case, async: true
 
+  alias CliSubprocessCore.ExecutionSurface
   alias GeminiCliSdk.{Configuration, Models, Options}
 
   describe "struct defaults" do
     test "has sensible defaults" do
       opts = %Options{}
+      assert opts.execution_surface == %ExecutionSurface{}
       assert opts.model == nil
       assert opts.yolo == false
       assert opts.approval_mode == nil
@@ -138,6 +140,27 @@ defmodule GeminiCliSdk.OptionsTest do
       assert_raise ArgumentError, ~r/model_payload_conflict/, fn ->
         Options.validate!(%Options{model_payload: payload, model: Models.default_model()})
       end
+    end
+
+    test "normalizes execution_surface from provider-facing keyword input" do
+      validated =
+        Options.validate!(%Options{
+          execution_surface: [
+            surface_kind: :static_ssh,
+            transport_options: [destination: "gemini-options.test.example", port: 2222],
+            target_id: "target-1"
+          ]
+        })
+
+      assert %ExecutionSurface{} = validated.execution_surface
+      assert validated.execution_surface.surface_kind == :static_ssh
+
+      assert validated.execution_surface.transport_options == [
+               destination: "gemini-options.test.example",
+               port: 2222
+             ]
+
+      assert validated.execution_surface.target_id == "target-1"
     end
   end
 end

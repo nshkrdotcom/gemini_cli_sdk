@@ -1,6 +1,7 @@
 defmodule GeminiCliSdk.CommandTest do
   use ExUnit.Case, async: false
 
+  alias CliSubprocessCore.TestSupport.FakeSSH
   alias GeminiCliSdk.Command
   alias GeminiCliSdk.Error
   alias GeminiCliSdk.TestSupport
@@ -169,6 +170,43 @@ defmodule GeminiCliSdk.CommandTest do
                    Command.run(["--version"])
         end
       )
+    end
+
+    test "preserves execution_surface over the canonical fake SSH harness" do
+      dir = TestSupport.tmp_dir!("gemini_command_fake_ssh")
+      stub_path = write_command_stub!(dir)
+      fake_ssh = FakeSSH.new!()
+
+      try do
+        TestSupport.with_env(
+          %{
+            "GEMINI_CLI_PATH" => stub_path,
+            "GEMINI_TEST_OUTPUT" => "session list output"
+          },
+          fn ->
+            assert {:ok, output} =
+                     Command.run(["--list-sessions"],
+                       execution_surface: [
+                         surface_kind: :static_ssh,
+                         transport_options:
+                           FakeSSH.transport_options(fake_ssh,
+                             destination: "gemini-command.test.example",
+                             port: 2222
+                           )
+                       ]
+                     )
+
+            assert output =~ "session list output"
+            assert FakeSSH.wait_until_written(fake_ssh, 1_000) == :ok
+
+            assert FakeSSH.read_manifest!(fake_ssh) =~
+                     "destination=gemini-command.test.example"
+          end
+        )
+      after
+        FakeSSH.cleanup(fake_ssh)
+        File.rm_rf(dir)
+      end
     end
   end
 end

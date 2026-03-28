@@ -6,7 +6,7 @@ defmodule GeminiCliSdk.Options do
   setting. Fields with `nil` default are omitted from the generated argument list.
   """
 
-  alias CliSubprocessCore.ModelInput
+  alias CliSubprocessCore.{ExecutionSurface, ModelInput}
   alias GeminiCliSdk.Configuration
   alias GeminiCliSdk.Schema.Options, as: OptionsSchema
 
@@ -16,6 +16,7 @@ defmodule GeminiCliSdk.Options do
   @type resume_value :: true | String.t() | nil
 
   @type t :: %__MODULE__{
+          execution_surface: ExecutionSurface.t(),
           model_payload: CliSubprocessCore.ModelRegistry.selection() | nil,
           model: String.t() | nil,
           yolo: boolean(),
@@ -36,7 +37,8 @@ defmodule GeminiCliSdk.Options do
           max_stderr_buffer_bytes: pos_integer()
         }
 
-  defstruct model_payload: nil,
+  defstruct execution_surface: %ExecutionSurface{},
+            model_payload: nil,
             model: nil,
             yolo: false,
             approval_mode: nil,
@@ -115,4 +117,49 @@ defmodule GeminiCliSdk.Options do
 
   defp explicit_model_payload?(%__MODULE__{model_payload: payload}) when is_map(payload), do: true
   defp explicit_model_payload?(_opts), do: false
+
+  @doc false
+  @spec normalize_execution_surface(term()) :: {:ok, ExecutionSurface.t()} | {:error, term()}
+  def normalize_execution_surface(nil), do: {:ok, %ExecutionSurface{}}
+
+  def normalize_execution_surface(%ExecutionSurface{} = execution_surface),
+    do: {:ok, execution_surface}
+
+  def normalize_execution_surface(execution_surface) when is_list(execution_surface) do
+    ExecutionSurface.new(execution_surface)
+  end
+
+  def normalize_execution_surface(%{} = execution_surface) do
+    execution_surface
+    |> execution_surface_attrs()
+    |> ExecutionSurface.new()
+  end
+
+  def normalize_execution_surface(other), do: {:error, {:invalid_execution_surface, other}}
+
+  @doc false
+  @spec execution_surface_options(t() | ExecutionSurface.t() | nil) :: keyword()
+  def execution_surface_options(%__MODULE__{execution_surface: execution_surface}) do
+    execution_surface_options(execution_surface)
+  end
+
+  def execution_surface_options(%ExecutionSurface{} = execution_surface) do
+    execution_surface
+    |> ExecutionSurface.surface_metadata()
+    |> Keyword.put(:transport_options, execution_surface.transport_options)
+  end
+
+  def execution_surface_options(nil), do: []
+
+  defp execution_surface_attrs(attrs) when is_map(attrs) do
+    [
+      surface_kind: Map.get(attrs, :surface_kind, Map.get(attrs, "surface_kind")),
+      transport_options: Map.get(attrs, :transport_options, Map.get(attrs, "transport_options")),
+      target_id: Map.get(attrs, :target_id, Map.get(attrs, "target_id")),
+      lease_ref: Map.get(attrs, :lease_ref, Map.get(attrs, "lease_ref")),
+      surface_ref: Map.get(attrs, :surface_ref, Map.get(attrs, "surface_ref")),
+      boundary_class: Map.get(attrs, :boundary_class, Map.get(attrs, "boundary_class")),
+      observability: Map.get(attrs, :observability, Map.get(attrs, "observability", %{}))
+    ]
+  end
 end

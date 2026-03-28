@@ -1,6 +1,7 @@
 defmodule GeminiCliSdk.StreamTest do
   use ExUnit.Case, async: false
 
+  alias CliSubprocessCore.TestSupport.FakeSSH
   alias GeminiCliSdk.TestSupport
   alias GeminiCliSdk.Types
 
@@ -75,6 +76,40 @@ defmodule GeminiCliSdk.StreamTest do
           assert %Types.ResultEvent{status: "success"} = result
         end)
       after
+        File.rm_rf(dir)
+      end
+    end
+
+    test "preserves execution_surface over the canonical fake SSH harness" do
+      dir = TestSupport.tmp_dir!("gemini_stream_fake_ssh")
+      stub_path = write_stream_stub!(dir)
+      fixture = TestSupport.fixture_path("simple_response.jsonl")
+      fake_ssh = FakeSSH.new!()
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          events =
+            GeminiCliSdk.Stream.execute("hello over ssh", %GeminiCliSdk.Options{
+              timeout_ms: 5_000,
+              execution_surface: [
+                surface_kind: :static_ssh,
+                transport_options:
+                  FakeSSH.transport_options(fake_ssh,
+                    destination: "gemini-stream.test.example",
+                    port: 2222
+                  )
+              ],
+              env: %{"GEMINI_TEST_STREAM_FILE" => fixture}
+            })
+            |> Enum.to_list()
+
+          assert %Types.InitEvent{} = hd(events)
+          assert %Types.ResultEvent{status: "success"} = List.last(events)
+          assert FakeSSH.wait_until_written(fake_ssh, 1_000) == :ok
+          assert FakeSSH.read_manifest!(fake_ssh) =~ "destination=gemini-stream.test.example"
+        end)
+      after
+        FakeSSH.cleanup(fake_ssh)
         File.rm_rf(dir)
       end
     end

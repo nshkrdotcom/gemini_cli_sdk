@@ -1,7 +1,7 @@
 defmodule GeminiCliSdk.Schema.Options do
   @moduledoc false
 
-  alias CliSubprocessCore.Schema.Conventions
+  alias CliSubprocessCore.{ExecutionSurface, Schema.Conventions}
   alias GeminiCliSdk.{Configuration, Options, Schema}
 
   @default_timeout_ms Configuration.default_timeout_ms()
@@ -23,6 +23,7 @@ defmodule GeminiCliSdk.Schema.Options do
   def schema do
     Zoi.map(
       %{
+        execution_surface: execution_surface_schema(),
         model_payload: Conventions.optional_any(),
         model: Conventions.optional_trimmed_string(),
         yolo: Zoi.default(Zoi.optional(Zoi.nullish(Zoi.boolean())), false),
@@ -143,7 +144,37 @@ defmodule GeminiCliSdk.Schema.Options do
   defp approval_mode_schema,
     do: Zoi.any() |> Zoi.transform({__MODULE__, :normalize_approval_mode, []})
 
+  @doc false
+  def normalize_execution_surface(value, opts), do: normalize_execution_surface(value, [], opts)
+
+  @doc false
+  def normalize_execution_surface(value, _args, _opts) do
+    case Options.normalize_execution_surface(value) do
+      {:ok, execution_surface} ->
+        {:ok, execution_surface}
+
+      {:error, {:invalid_execution_surface, other}} ->
+        {:error,
+         "execution_surface must be a CliSubprocessCore.ExecutionSurface struct, keyword list, or map, got: #{inspect(other)}"}
+
+      {:error, reason} ->
+        {:error, "invalid execution_surface: #{inspect(reason)}"}
+    end
+  end
+
   defp resume_schema, do: Zoi.any() |> Zoi.transform({__MODULE__, :normalize_resume, []})
+
+  defp execution_surface_schema do
+    Zoi.default(
+      Zoi.optional(
+        Zoi.nullish(
+          Zoi.any()
+          |> Zoi.transform({__MODULE__, :normalize_execution_surface, []})
+        )
+      ),
+      %ExecutionSurface{}
+    )
+  end
 
   defp string_list_schema do
     Zoi.default(
@@ -192,6 +223,7 @@ defmodule GeminiCliSdk.Schema.Options do
 
   defp project(parsed) do
     %Options{
+      execution_surface: Map.get(parsed, :execution_surface, %ExecutionSurface{}),
       model_payload: Map.get(parsed, :model_payload),
       model: blank_to_nil(Map.get(parsed, :model)),
       yolo: Map.get(parsed, :yolo, false),

@@ -2,6 +2,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
   use ExUnit.Case, async: false
 
   alias CliSubprocessCore.{Event, Payload, ProcessExit}
+  alias CliSubprocessCore.TestSupport.FakeSSH
   alias GeminiCliSdk.{Options, Runtime.CLI, TestSupport, Types}
 
   defp write_runtime_stub!(dir) do
@@ -90,6 +91,59 @@ defmodule GeminiCliSdk.Runtime.CLITest do
       after
         File.rm_rf(dir)
       end
+    end
+
+    test "preserves execution_surface over the canonical fake SSH harness" do
+      dir = TestSupport.tmp_dir!("gemini_runtime_cli_fake_ssh")
+      stub_path = write_runtime_stub!(dir)
+      fake_ssh = FakeSSH.new!()
+      monitor_ref = make_ref()
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          options =
+            Options.validate!(%Options{
+              execution_surface: [
+                surface_kind: :static_ssh,
+                transport_options:
+                  FakeSSH.transport_options(fake_ssh,
+                    destination: "gemini-runtime.test.example",
+                    port: 2222
+                  )
+              ],
+              env: %{"GEMINI_TEST_RUNTIME" => "1"}
+            })
+
+          assert {:ok, session, %{info: info}} =
+                   CLI.start_session(
+                     prompt: "hello over ssh",
+                     options: options,
+                     subscriber: {self(), monitor_ref}
+                   )
+
+          assert info.delivery.tagged_event_tag == CLI.session_event_tag()
+          assert info.transport.info.surface_kind == :static_ssh
+
+          assert info.transport.info.delivery.tagged_event_tag ==
+                   :cli_subprocess_core_session_transport
+
+          assert FakeSSH.wait_until_written(fake_ssh, 1_000) == :ok
+          assert FakeSSH.read_manifest!(fake_ssh) =~ "destination=gemini-runtime.test.example"
+
+          session_monitor = Process.monitor(session)
+          assert :ok = CLI.close(session)
+          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+        end)
+      after
+        FakeSSH.cleanup(fake_ssh)
+        File.rm_rf(dir)
+      end
+    end
+  end
+
+  describe "transport wrapper deletion sequencing" do
+    test "records zero surviving Gemini transport wrapper behavior on the active runtime lane" do
+      refute File.exists?(Path.expand("../../lib/gemini_cli_sdk/transport.ex", __DIR__))
     end
   end
 

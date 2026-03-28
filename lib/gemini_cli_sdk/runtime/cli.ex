@@ -7,6 +7,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
   instead of treating the underlying session tag as core identity.
   """
 
+  alias CliSubprocessCore.CommandSpec
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.Payload
   alias CliSubprocessCore.ProcessExit, as: CoreProcessExit
@@ -15,7 +16,6 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias CliSubprocessCore.Transport.Error, as: CoreTransportError
   alias GeminiCliSdk.{ArgBuilder, Config, Env, Options, Types}
   alias GeminiCliSdk.CLI, as: GeminiCLI
-  alias GeminiCliSdk.CLI.CommandSpec
 
   @runtime_metadata %{lane: :gemini_cli_sdk}
   @default_session_event_tag :gemini_cli_sdk_runtime_cli
@@ -64,6 +64,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
   @type start_option ::
           {:prompt, String.t()}
           | {:options, Options.t()}
+          | {:execution_surface, CliSubprocessCore.ExecutionSurface.t() | map() | keyword()}
           | {:subscriber, pid() | {pid(), reference() | :legacy}}
           | {:metadata, map()}
           | {:session_event_tag, atom()}
@@ -73,7 +74,12 @@ defmodule GeminiCliSdk.Runtime.CLI do
           | {:error, term()}
   def start_session(opts) when is_list(opts) do
     prompt = Keyword.get(opts, :prompt, "")
-    options = opts |> Keyword.get(:options, %Options{}) |> Options.validate!()
+
+    options =
+      opts
+      |> Keyword.get(:options, %Options{})
+      |> maybe_override_execution_surface(Keyword.get(opts, :execution_surface))
+      |> Options.validate!()
 
     with {:ok, %CommandSpec{} = command_spec} <- GeminiCLI.resolve(),
          {:ok, settings_path, temp_dir} <- Config.build_settings_file(options.settings) do
@@ -207,7 +213,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
       {:ok,
        CliSubprocessCore.Command.new(
-         GeminiCLI.to_core_command_spec(command_spec),
+         command_spec,
          args,
          cwd: Keyword.get(opts, :cwd, File.cwd!()),
          env: Keyword.get(opts, :env, %{})
@@ -258,7 +264,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       env: build_env(options),
       headless_timeout_ms: :infinity,
       max_stderr_buffer_size: options.max_stderr_buffer_bytes
-    ]
+    ] ++ Options.execution_surface_options(options)
   end
 
   defp options_from_provider_opts(opts) do
@@ -287,6 +293,12 @@ defmodule GeminiCliSdk.Runtime.CLI do
     env
     |> Env.build_cli_env()
     |> Map.put("GEMINI_SYSTEM_MD", system_prompt)
+  end
+
+  defp maybe_override_execution_surface(%Options{} = options, nil), do: options
+
+  defp maybe_override_execution_surface(%Options{} = options, execution_surface) do
+    %{options | execution_surface: execution_surface}
   end
 
   defp decode_public_raw(raw) do

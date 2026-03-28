@@ -1,8 +1,8 @@
 defmodule GeminiCliSdk.CLITest do
   use ExUnit.Case, async: false
 
+  alias CliSubprocessCore.CommandSpec
   alias GeminiCliSdk.CLI
-  alias GeminiCliSdk.CLI.CommandSpec
   alias GeminiCliSdk.Error
   alias GeminiCliSdk.TestSupport
 
@@ -220,7 +220,7 @@ defmodule GeminiCliSdk.CLITest do
   end
 
   describe "resolve!/0" do
-    test "returns CommandSpec when found" do
+    test "returns core CommandSpec when found" do
       dir = TestSupport.tmp_dir!("gemini_cli_resolve_bang")
       gemini_path = TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
 
