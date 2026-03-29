@@ -12,6 +12,7 @@ Run a single example:
 ```bash
 mix run examples/simple_prompt.exs
 mix run examples/simple_prompt.exs -- --ssh-host example.internal
+mix run examples/simple_prompt.exs -- --ssh-host example.internal --danger-full-access
 ```
 
 Run all examples:
@@ -19,6 +20,7 @@ Run all examples:
 ```bash
 bash examples/run_all.sh
 bash examples/run_all.sh --ssh-host example.internal
+bash examples/run_all.sh --ssh-host example.internal --danger-full-access
 ```
 
 Run a specific example by name:
@@ -32,6 +34,8 @@ bash examples/run_all.sh session_management --ssh-host builder@example.internal 
 
 Every example in this directory accepts the same optional SSH transport flags:
 
+- `--cwd <path>` passes an explicit working directory to the example
+- `--danger-full-access` maps the example to the Gemini permissive runtime posture
 - `--ssh-host <host>` switches the example to `execution_surface: :ssh_exec`
 - `--ssh-user <user>` overrides the SSH user
 - `--ssh-port <port>` overrides the SSH port
@@ -39,6 +43,10 @@ Every example in this directory accepts the same optional SSH transport flags:
 
 If you omit the SSH flags, the examples keep the existing local subprocess
 default unchanged.
+
+For Gemini, `--danger-full-access` keeps the same transport placement and
+switches the example to the permissive runtime combination
+`approval_mode: :yolo` with sandboxing disabled.
 
 ## Examples
 
@@ -60,4 +68,4 @@ default unchanged.
 - Examples print diagnostic info to stderr and content to stdout
 - Timeouts are set conservatively; adjust `timeout_ms` if needed
 - Pass example flags after `--` when using `mix run`, for example:
-  `mix run examples/streaming.exs -- --ssh-host example.internal`
+  `mix run examples/streaming.exs -- --ssh-host example.internal --danger-full-access`

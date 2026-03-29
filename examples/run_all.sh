@@ -9,6 +9,7 @@
 #   bash examples/run_all.sh
 #   bash examples/run_all.sh streaming
 #   bash examples/run_all.sh --ssh-host example.internal
+#   bash examples/run_all.sh --ssh-host example.internal --danger-full-access
 #   bash examples/run_all.sh streaming --ssh-host builder@example.internal --ssh-port 2222
 
 set -euo pipefail
@@ -59,18 +60,21 @@ run_example() {
 usage() {
   cat <<'EOF'
 Usage:
-  bash examples/run_all.sh [example_name] [--ssh-host HOST] [--ssh-user USER] [--ssh-port PORT] [--ssh-identity-file PATH]
+  bash examples/run_all.sh [example_name] [--cwd PATH] [--danger-full-access] [--ssh-host HOST] [--ssh-user USER] [--ssh-port PORT] [--ssh-identity-file PATH]
 
 Examples:
   bash examples/run_all.sh
   bash examples/run_all.sh streaming
   bash examples/run_all.sh --ssh-host example.internal
+  bash examples/run_all.sh --ssh-host example.internal --danger-full-access
   bash examples/run_all.sh session_management --ssh-host builder@example.internal --ssh-port 2222
 EOF
 }
 
 selected_example=""
 forward_args=()
+ssh_host=""
+ssh_aux_set=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -78,16 +82,32 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    --ssh-host|--ssh-user|--ssh-port|--ssh-identity-file)
+    --cwd|--ssh-host|--ssh-user|--ssh-port|--ssh-identity-file)
       if [[ $# -lt 2 ]]; then
         echo "ERROR: $1 requires a value." >&2
         exit 1
       fi
 
+      if [[ "$1" == "--ssh-host" ]]; then
+        ssh_host="$2"
+      elif [[ "$1" == --ssh-* ]]; then
+        ssh_aux_set=1
+      fi
+
       forward_args+=("$1" "$2")
       shift 2
       ;;
-    --ssh-host=*|--ssh-user=*|--ssh-port=*|--ssh-identity-file=*)
+    --cwd=*|--ssh-host=*|--ssh-user=*|--ssh-port=*|--ssh-identity-file=*)
+      if [[ "$1" == --ssh-host=* ]]; then
+        ssh_host="${1#*=}"
+      elif [[ "$1" == --ssh-* ]]; then
+        ssh_aux_set=1
+      fi
+
+      forward_args+=("$1")
+      shift
+      ;;
+    --danger-full-access)
       forward_args+=("$1")
       shift
       ;;
@@ -108,6 +128,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -z "$ssh_host" && "$ssh_aux_set" -eq 1 ]]; then
+  echo "ERROR: --ssh-user/--ssh-port/--ssh-identity-file require --ssh-host." >&2
+  exit 1
+fi
 
 if [[ -n "$selected_example" ]]; then
   run_example "$selected_example" "${forward_args[@]}"

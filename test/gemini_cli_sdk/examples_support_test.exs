@@ -14,6 +14,9 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
   test "parse_argv/1 builds ssh execution_surface from shared flags" do
     assert {:ok, context} =
              ExamplesSupport.parse_argv([
+               "--cwd",
+               "/srv/gemini",
+               "--danger-full-access",
                "--ssh-host",
                "builder@example.internal",
                "--ssh-port",
@@ -31,6 +34,8 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
     assert context.execution_surface.transport_options[:ssh_user] == "builder"
     assert context.execution_surface.transport_options[:port] == 2222
     assert context.execution_surface.transport_options[:identity_file] =~ "/tmp/id_ed25519"
+    assert context.example_cwd == "/srv/gemini"
+    assert context.example_danger_full_access == true
   end
 
   test "parse_argv/1 rejects orphan ssh flags without --ssh-host" do
@@ -38,8 +43,20 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
     assert message =~ "require --ssh-host"
   end
 
+  test "parse_argv/1 rejects blank cwd values" do
+    assert {:error, message} = ExamplesSupport.parse_argv(["--cwd", "   "])
+    assert message =~ "--cwd"
+  end
+
   test "with_execution_surface/1 injects the parsed surface into options structs" do
-    assert {:ok, context} = ExamplesSupport.parse_argv(["--ssh-host", "example.internal"])
+    assert {:ok, context} =
+             ExamplesSupport.parse_argv([
+               "--cwd",
+               "/srv/gemini",
+               "--danger-full-access",
+               "--ssh-host",
+               "example.internal"
+             ])
 
     Process.put({ExamplesSupport, :ssh_context}, context)
 
@@ -49,6 +66,33 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
 
     assert opts.execution_surface.surface_kind == :ssh_exec
     assert opts.execution_surface.transport_options[:destination] == "example.internal"
+    assert opts.cwd == "/srv/gemini"
+    assert opts.approval_mode == :yolo
+    assert opts.yolo == false
+    assert opts.sandbox == false
+  after
+    Process.delete({ExamplesSupport, :ssh_context})
+  end
+
+  test "command_opts/1 injects shared runtime flags for direct command helpers" do
+    assert {:ok, context} =
+             ExamplesSupport.parse_argv([
+               "--cwd",
+               "/srv/gemini",
+               "--danger-full-access",
+               "--ssh-host",
+               "example.internal"
+             ])
+
+    Process.put({ExamplesSupport, :ssh_context}, context)
+
+    opts = ExamplesSupport.command_opts([])
+
+    assert opts[:execution_surface].surface_kind == :ssh_exec
+    assert opts[:cwd] == "/srv/gemini"
+    assert opts[:approval_mode] == :yolo
+    assert opts[:yolo] == false
+    assert opts[:sandbox] == false
   after
     Process.delete({ExamplesSupport, :ssh_context})
   end
