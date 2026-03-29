@@ -99,7 +99,10 @@ defmodule GeminiCliSdk.StreamTest do
                     port: 2222
                   )
               ],
-              env: %{"GEMINI_TEST_STREAM_FILE" => fixture}
+              env: %{
+                "GEMINI_TEST_STREAM_FILE" => fixture,
+                "PATH" => dir <> ":" <> (System.get_env("PATH") || "")
+              }
             })
             |> Enum.to_list()
 

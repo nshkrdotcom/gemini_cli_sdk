@@ -111,7 +111,10 @@ defmodule GeminiCliSdk.Runtime.CLITest do
                     port: 2222
                   )
               ],
-              env: %{"GEMINI_TEST_RUNTIME" => "1"}
+              env: %{
+                "GEMINI_TEST_RUNTIME" => "1",
+                "PATH" => dir <> ":" <> (System.get_env("PATH") || "")
+              }
             })
 
           assert {:ok, session, %{info: info}} =

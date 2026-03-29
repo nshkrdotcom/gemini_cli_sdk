@@ -217,6 +217,23 @@ defmodule GeminiCliSdk.CLITest do
         end
       )
     end
+
+    test "remote execution surfaces fall back to the remote provider command instead of local GEMINI_CLI_PATH" do
+      dir = TestSupport.tmp_dir!("gemini_cli_remote_surface")
+      gemini_path = TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => gemini_path}, fn ->
+          assert {:ok, %CommandSpec{program: "gemini", argv_prefix: []}} =
+                   CLI.resolve(
+                     surface_kind: :static_ssh,
+                     transport_options: [destination: "gemini.example"]
+                   )
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
   end
 
   describe "resolve!/0" do

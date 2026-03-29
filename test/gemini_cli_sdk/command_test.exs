@@ -186,6 +186,7 @@ defmodule GeminiCliSdk.CommandTest do
           fn ->
             assert {:ok, output} =
                      Command.run(["--list-sessions"],
+                       env: %{"PATH" => dir <> ":" <> (System.get_env("PATH") || "")},
                        execution_surface: [
                          surface_kind: :static_ssh,
                          transport_options:

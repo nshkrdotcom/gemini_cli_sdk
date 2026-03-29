@@ -20,7 +20,7 @@ defmodule GeminiCliSdk.Command do
 
   @spec run([String.t()], [run_opt()]) :: {:ok, String.t()} | {:error, Error.t()}
   def run(args, opts \\ []) when is_list(args) and is_list(opts) do
-    with {:ok, command} <- CLI.resolve() do
+    with {:ok, command} <- CLI.resolve(Keyword.get(opts, :execution_surface)) do
       run(command, args, opts)
     end
   end

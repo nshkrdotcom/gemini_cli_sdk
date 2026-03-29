@@ -81,7 +81,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       |> maybe_override_execution_surface(Keyword.get(opts, :execution_surface))
       |> Options.validate!()
 
-    with {:ok, %CommandSpec{} = command_spec} <- GeminiCLI.resolve(),
+    with {:ok, %CommandSpec{} = command_spec} <- GeminiCLI.resolve(options.execution_surface),
          {:ok, settings_path, temp_dir} <- Config.build_settings_file(options.settings) do
       session_opts =
         build_session_options(

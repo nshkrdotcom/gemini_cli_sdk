@@ -19,9 +19,10 @@ defmodule GeminiCliSdk.CLI do
   alias CliSubprocessCore.ProviderCLI.Error, as: ProviderCLIError
   alias GeminiCliSdk.Error
 
-  @spec resolve() :: {:ok, CommandSpec.t()} | {:error, Error.t()}
-  def resolve do
-    case ProviderCLI.resolve(:gemini) do
+  @spec resolve(CliSubprocessCore.ExecutionSurface.t() | map() | keyword() | nil) ::
+          {:ok, CommandSpec.t()} | {:error, Error.t()}
+  def resolve(execution_surface \\ nil) do
+    case ProviderCLI.resolve(:gemini, [], execution_surface: execution_surface) do
       {:ok, %CommandSpec{} = spec} ->
         {:ok, spec}
 
@@ -30,9 +31,10 @@ defmodule GeminiCliSdk.CLI do
     end
   end
 
-  @spec resolve!() :: CommandSpec.t()
-  def resolve! do
-    case resolve() do
+  @spec resolve!(CliSubprocessCore.ExecutionSurface.t() | map() | keyword() | nil) ::
+          CommandSpec.t()
+  def resolve!(execution_surface \\ nil) do
+    case resolve(execution_surface) do
       {:ok, spec} -> spec
       {:error, error} -> raise error
     end
