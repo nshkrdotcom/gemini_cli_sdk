@@ -146,14 +146,14 @@ defmodule GeminiCliSdk.OptionsTest do
       validated =
         Options.validate!(%Options{
           execution_surface: [
-            surface_kind: :static_ssh,
+            surface_kind: :ssh_exec,
             transport_options: [destination: "gemini-options.test.example", port: 2222],
             target_id: "target-1"
           ]
         })
 
       assert %ExecutionSurface{} = validated.execution_surface
-      assert validated.execution_surface.surface_kind == :static_ssh
+      assert validated.execution_surface.surface_kind == :ssh_exec
 
       assert validated.execution_surface.transport_options == [
                destination: "gemini-options.test.example",

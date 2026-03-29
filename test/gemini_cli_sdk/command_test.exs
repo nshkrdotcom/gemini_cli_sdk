@@ -188,7 +188,7 @@ defmodule GeminiCliSdk.CommandTest do
                      Command.run(["--list-sessions"],
                        env: %{"PATH" => dir <> ":" <> (System.get_env("PATH") || "")},
                        execution_surface: [
-                         surface_kind: :static_ssh,
+                         surface_kind: :ssh_exec,
                          transport_options:
                            FakeSSH.transport_options(fake_ssh,
                              destination: "gemini-command.test.example",
@@ -218,7 +218,7 @@ defmodule GeminiCliSdk.CommandTest do
           assert {:error, %Error{} = error} =
                    Command.run(["--version"],
                      execution_surface: [
-                       surface_kind: :static_ssh,
+                       surface_kind: :ssh_exec,
                        transport_options:
                          FakeSSH.transport_options(fake_ssh,
                            destination: "gemini-command.missing.example"

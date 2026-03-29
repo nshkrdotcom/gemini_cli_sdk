@@ -104,7 +104,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
           options =
             Options.validate!(%Options{
               execution_surface: [
-                surface_kind: :static_ssh,
+                surface_kind: :ssh_exec,
                 transport_options:
                   FakeSSH.transport_options(fake_ssh,
                     destination: "gemini-runtime.test.example",
@@ -125,7 +125,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
                    )
 
           assert info.delivery.tagged_event_tag == CLI.session_event_tag()
-          assert info.transport.info.surface_kind == :static_ssh
+          assert info.transport.info.surface_kind == :ssh_exec
 
           assert info.transport.info.delivery.tagged_event_tag ==
                    :cli_subprocess_core_session_transport
@@ -154,7 +154,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
           options =
             Options.validate!(%Options{
               execution_surface: [
-                surface_kind: :static_ssh,
+                surface_kind: :ssh_exec,
                 transport_options:
                   FakeSSH.transport_options(fake_ssh, destination: "gemini-runtime.cwd.example")
               ],

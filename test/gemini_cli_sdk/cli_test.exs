@@ -226,7 +226,7 @@ defmodule GeminiCliSdk.CLITest do
         TestSupport.with_env(%{"GEMINI_CLI_PATH" => gemini_path}, fn ->
           assert {:ok, %CommandSpec{program: "gemini", argv_prefix: []}} =
                    CLI.resolve(
-                     surface_kind: :static_ssh,
+                     surface_kind: :ssh_exec,
                      transport_options: [destination: "gemini.example"]
                    )
         end)

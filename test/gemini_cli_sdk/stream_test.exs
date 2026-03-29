@@ -92,7 +92,7 @@ defmodule GeminiCliSdk.StreamTest do
             GeminiCliSdk.Stream.execute("hello over ssh", %GeminiCliSdk.Options{
               timeout_ms: 5_000,
               execution_surface: [
-                surface_kind: :static_ssh,
+                surface_kind: :ssh_exec,
                 transport_options:
                   FakeSSH.transport_options(fake_ssh,
                     destination: "gemini-stream.test.example",
