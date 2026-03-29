@@ -6,8 +6,10 @@
 #   - Mix dependencies fetched (mix deps.get)
 #
 # Usage:
-#   bash examples/run_all.sh          # Run all examples
-#   bash examples/run_all.sh simple   # Run just one example
+#   bash examples/run_all.sh
+#   bash examples/run_all.sh streaming
+#   bash examples/run_all.sh --ssh-host example.internal
+#   bash examples/run_all.sh streaming --ssh-host builder@example.internal --ssh-port 2222
 
 set -euo pipefail
 
@@ -30,6 +32,7 @@ EXAMPLES=(
 run_example() {
   local name="$1"
   local file="examples/${name}.exs"
+  shift
 
   if [ ! -f "$file" ]; then
     echo "ERROR: Example not found: $file" >&2
@@ -42,15 +45,72 @@ run_example() {
   echo "================================================================"
   echo ""
 
-  mix run "$file"
+  if [ "$#" -gt 0 ]; then
+    mix run "$file" -- "$@"
+  else
+    mix run "$file"
+  fi
 
   echo ""
   echo "--- $name completed ---"
   echo ""
 }
 
-if [ $# -gt 0 ]; then
-  run_example "$1"
+usage() {
+  cat <<'EOF'
+Usage:
+  bash examples/run_all.sh [example_name] [--ssh-host HOST] [--ssh-user USER] [--ssh-port PORT] [--ssh-identity-file PATH]
+
+Examples:
+  bash examples/run_all.sh
+  bash examples/run_all.sh streaming
+  bash examples/run_all.sh --ssh-host example.internal
+  bash examples/run_all.sh session_management --ssh-host builder@example.internal --ssh-port 2222
+EOF
+}
+
+selected_example=""
+forward_args=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --ssh-host|--ssh-user|--ssh-port|--ssh-identity-file)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: $1 requires a value." >&2
+        exit 1
+      fi
+
+      forward_args+=("$1" "$2")
+      shift 2
+      ;;
+    --ssh-host=*|--ssh-user=*|--ssh-port=*|--ssh-identity-file=*)
+      forward_args+=("$1")
+      shift
+      ;;
+    -*)
+      echo "ERROR: unknown argument: $1" >&2
+      echo "" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -n "$selected_example" ]]; then
+        echo "ERROR: only one example name may be provided." >&2
+        exit 1
+      fi
+
+      selected_example="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$selected_example" ]]; then
+  run_example "$selected_example" "${forward_args[@]}"
   exit 0
 fi
 
@@ -60,7 +120,7 @@ echo ""
 echo "Running ${#EXAMPLES[@]} examples..."
 
 for example in "${EXAMPLES[@]}"; do
-  run_example "$example"
+  run_example "$example" "${forward_args[@]}"
 done
 
 echo ""

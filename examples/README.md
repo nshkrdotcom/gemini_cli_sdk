@@ -11,19 +11,34 @@ Run a single example:
 
 ```bash
 mix run examples/simple_prompt.exs
+mix run examples/simple_prompt.exs -- --ssh-host example.internal
 ```
 
 Run all examples:
 
 ```bash
 bash examples/run_all.sh
+bash examples/run_all.sh --ssh-host example.internal
 ```
 
 Run a specific example by name:
 
 ```bash
 bash examples/run_all.sh streaming
+bash examples/run_all.sh session_management --ssh-host builder@example.internal --ssh-port 2222
 ```
+
+## Shared SSH Flags
+
+Every example in this directory accepts the same optional SSH transport flags:
+
+- `--ssh-host <host>` switches the example to `execution_surface: :ssh_exec`
+- `--ssh-user <user>` overrides the SSH user
+- `--ssh-port <port>` overrides the SSH port
+- `--ssh-identity-file <path>` sets the SSH identity file
+
+If you omit the SSH flags, the examples keep the existing local subprocess
+default unchanged.
 
 ## Examples
 
@@ -44,3 +59,5 @@ bash examples/run_all.sh streaming
 - Each example is self-contained and can be run independently
 - Examples print diagnostic info to stderr and content to stdout
 - Timeouts are set conservatively; adjust `timeout_ms` if needed
+- Pass example flags after `--` when using `mix run`, for example:
+  `mix run examples/streaming.exs -- --ssh-host example.internal`

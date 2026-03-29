@@ -5,6 +5,12 @@
 # Usage:
 #   mix run examples/sync_execution.exs
 
+Code.require_file(Path.expand("support/example_helper.exs", __DIR__))
+
+alias Examples.Support
+
+Support.init!()
+
 IO.puts("=== Synchronous Execution ===\n")
 
 timeout_ms = 120_000
@@ -18,7 +24,9 @@ prompts = [
 for {prompt, idx} <- Enum.with_index(prompts, 1) do
   IO.puts("#{idx}. #{prompt}")
 
-  opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: timeout_ms}
+  opts =
+    %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model(), timeout_ms: timeout_ms}
+    |> Support.with_execution_surface()
 
   case GeminiCliSdk.run(prompt, opts) do
     {:ok, response} ->

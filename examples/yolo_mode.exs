@@ -9,16 +9,23 @@
 # Usage:
 #   mix run examples/yolo_mode.exs
 
+Code.require_file(Path.expand("support/example_helper.exs", __DIR__))
+
+alias Examples.Support
 alias GeminiCliSdk.Types
+
+Support.init!()
 
 IO.puts("=== YOLO Mode ===\n")
 IO.puts("Running with auto-approval enabled...\n")
 
-opts = %GeminiCliSdk.Options{
-  model: GeminiCliSdk.Models.fast_model(),
-  yolo: true,
-  timeout_ms: 120_000
-}
+opts =
+  %GeminiCliSdk.Options{
+    model: GeminiCliSdk.Models.fast_model(),
+    yolo: true,
+    timeout_ms: 120_000
+  }
+  |> Support.with_execution_surface()
 
 GeminiCliSdk.execute("Read the mix.exs file and tell me the project name and version", opts)
 |> Enum.each(fn event ->

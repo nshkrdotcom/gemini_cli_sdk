@@ -5,12 +5,18 @@
 # Usage:
 #   mix run examples/session_management.exs
 
+Code.require_file(Path.expand("support/example_helper.exs", __DIR__))
+
+alias Examples.Support
+
+Support.init!()
+
 IO.puts("=== Session Management ===\n")
 
 # List available sessions
 IO.puts("--- Listing Sessions ---")
 
-case GeminiCliSdk.list_sessions() do
+case GeminiCliSdk.list_sessions(Support.command_opts()) do
   {:ok, output} ->
     IO.puts(output)
 
@@ -23,7 +29,7 @@ IO.puts("")
 # Show version info
 IO.puts("--- CLI Version ---")
 
-case GeminiCliSdk.version() do
+case Support.command_run(["--version"]) do
   {:ok, version} ->
     IO.puts(version)
 

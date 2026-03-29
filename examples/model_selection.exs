@@ -5,6 +5,12 @@
 # Usage:
 #   mix run examples/model_selection.exs
 
+Code.require_file(Path.expand("support/example_helper.exs", __DIR__))
+
+alias Examples.Support
+
+Support.init!()
+
 IO.puts("=== Model Selection ===\n")
 
 timeout_ms = 120_000
@@ -14,10 +20,12 @@ models = GeminiCliSdk.Models.available_models()
 for model <- models do
   IO.puts("--- #{model} ---")
 
-  opts = %GeminiCliSdk.Options{
-    model: model,
-    timeout_ms: timeout_ms
-  }
+  opts =
+    %GeminiCliSdk.Options{
+      model: model,
+      timeout_ms: timeout_ms
+    }
+    |> Support.with_execution_surface()
 
   case GeminiCliSdk.run("What model are you? Reply in one sentence.", opts) do
     {:ok, response} ->

@@ -6,11 +6,18 @@
 # Usage:
 #   mix run examples/streaming.exs
 
+Code.require_file(Path.expand("support/example_helper.exs", __DIR__))
+
+alias Examples.Support
 alias GeminiCliSdk.Types
+
+Support.init!()
 
 IO.puts("=== Streaming ===\n")
 
-opts = %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
+opts =
+  %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()}
+  |> Support.with_execution_surface()
 
 GeminiCliSdk.execute("Explain the BEAM VM in 3 paragraphs", opts)
 |> Enum.each(fn event ->
