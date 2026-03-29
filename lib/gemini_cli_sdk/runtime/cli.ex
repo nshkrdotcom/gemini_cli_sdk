@@ -9,6 +9,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
   alias CliSubprocessCore.CommandSpec
   alias CliSubprocessCore.Event, as: CoreEvent
+  alias CliSubprocessCore.ExecutionSurface
   alias CliSubprocessCore.Payload
   alias CliSubprocessCore.ProcessExit, as: CoreProcessExit
   alias CliSubprocessCore.ProviderProfiles.Gemini, as: CoreGemini
@@ -215,7 +216,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
        CliSubprocessCore.Command.new(
          command_spec,
          args,
-         cwd: Keyword.get(opts, :cwd, File.cwd!()),
+         cwd: default_cwd(Keyword.get(opts, :cwd), Keyword.get(opts, :execution_surface)),
          env: Keyword.get(opts, :env, %{})
        )}
     else
@@ -260,7 +261,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       allowed_mcp_server_names: options.allowed_mcp_server_names,
       debug: options.debug,
       settings_path: settings_path,
-      cwd: options.cwd || File.cwd!(),
+      cwd: default_cwd(options.cwd, options.execution_surface),
       env: build_env(options),
       headless_timeout_ms: :infinity,
       max_stderr_buffer_size: options.max_stderr_buffer_bytes
@@ -301,6 +302,12 @@ defmodule GeminiCliSdk.Runtime.CLI do
     %{options | execution_surface: execution_surface}
   end
 
+  defp default_cwd(cwd, _execution_surface) when is_binary(cwd) and cwd != "", do: cwd
+
+  defp default_cwd(_cwd, execution_surface) do
+    if ExecutionSurface.remote_surface?(execution_surface), do: nil, else: File.cwd!()
+  end
+
   defp decode_public_raw(raw) do
     map = stringify_keys(raw)
 
@@ -320,13 +327,19 @@ defmodule GeminiCliSdk.Runtime.CLI do
          %Payload.Error{} = payload,
          state
        ) do
+    runtime_failure = payload_runtime_failure(payload)
+
     event =
       %Types.ErrorEvent{
         severity: "fatal",
-        message: payload.message,
-        kind: :transport_exit,
-        exit_code: exit.code,
-        details: %{reason: inspect(exit.reason)}
+        message: payload.message || exit_message(exit),
+        kind: normalize_kind(payload.code) || :transport_exit,
+        exit_code: runtime_failure_exit_code(runtime_failure, exit),
+        details:
+          payload.metadata
+          |> stringify_keys()
+          |> Map.put_new("reason", inspect(exit.reason))
+          |> Map.put_new("exit_code", exit.code)
       }
 
     {[event], track_event(state, event)}
@@ -384,6 +397,17 @@ defmodule GeminiCliSdk.Runtime.CLI do
     end
   end
 
+  defp payload_runtime_failure(%Payload.Error{metadata: metadata}) when is_map(metadata) do
+    Map.get(metadata, :runtime_failure) || Map.get(metadata, "runtime_failure") || %{}
+  end
+
+  defp payload_runtime_failure(_payload), do: %{}
+
+  defp runtime_failure_exit_code(runtime_failure, %CoreProcessExit{} = exit)
+       when is_map(runtime_failure) do
+    runtime_failure["exit_code"] || runtime_failure[:exit_code] || exit.code
+  end
+
   defp stringify_keys(map) when is_map(map) do
     Map.new(map, fn
       {key, value} when is_atom(key) or is_binary(key) -> {to_string(key), value}
@@ -392,7 +416,10 @@ defmodule GeminiCliSdk.Runtime.CLI do
   end
 
   defp normalize_kind(nil), do: nil
+  defp normalize_kind(:unknown), do: nil
   defp normalize_kind(kind) when is_atom(kind), do: kind
+
+  defp normalize_kind("unknown"), do: nil
 
   defp normalize_kind(kind) when is_binary(kind) do
     kind

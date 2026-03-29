@@ -1,6 +1,7 @@
 defmodule GeminiCliSdk.ErrorTest do
   use ExUnit.Case, async: true
 
+  alias CliSubprocessCore.ProviderCLI.ErrorRuntimeFailure
   alias GeminiCliSdk.Error
 
   test "new/1 creates error with kind and message" do
@@ -32,6 +33,24 @@ defmodule GeminiCliSdk.ErrorTest do
     error = Error.normalize({:transport, :not_connected}, kind: :transport_error)
     assert error.kind == :transport_error
     assert error.message =~ "not connected"
+  end
+
+  test "from_runtime_failure/2 preserves provider-classified CLI failures" do
+    failure =
+      %ErrorRuntimeFailure{
+        kind: :cli_not_found,
+        provider: :gemini,
+        message: "Gemini CLI not found on remote target ssh-target.example",
+        exit_code: 127,
+        stderr: "bash: line 1: gemini: command not found",
+        context: %{remote?: true, destination: "ssh-target.example"}
+      }
+
+    error = Error.from_runtime_failure(failure)
+    assert error.kind == :cli_not_found
+    assert error.exit_code == 127
+    assert error.details =~ "command not found"
+    assert error.context.destination == "ssh-target.example"
   end
 
   test "normalize/2 formats timeout errors" do

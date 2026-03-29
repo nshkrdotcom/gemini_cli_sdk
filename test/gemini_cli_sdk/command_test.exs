@@ -209,5 +209,31 @@ defmodule GeminiCliSdk.CommandTest do
         File.rm_rf(dir)
       end
     end
+
+    test "classifies missing remote Gemini CLI over SSH as :cli_not_found" do
+      fake_ssh = FakeSSH.new!()
+
+      try do
+        TestSupport.with_env(%{"PATH" => "/nonexistent_dir_only", "GEMINI_CLI_PATH" => nil}, fn ->
+          assert {:error, %Error{} = error} =
+                   Command.run(["--version"],
+                     execution_surface: [
+                       surface_kind: :static_ssh,
+                       transport_options:
+                         FakeSSH.transport_options(fake_ssh,
+                           destination: "gemini-command.missing.example"
+                         )
+                     ],
+                     env: %{"PATH" => "/nonexistent_dir_only"}
+                   )
+
+          assert error.kind == :cli_not_found
+          assert error.exit_code == 127
+          assert error.message =~ "remote target gemini-command.missing.example"
+        end)
+      after
+        FakeSSH.cleanup(fake_ssh)
+      end
+    end
   end
 end

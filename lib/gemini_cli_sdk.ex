@@ -72,8 +72,8 @@ defmodule GeminiCliSdk do
         {:error,
          Error.new(kind: :command_failed, message: error || "CLI returned status: #{status}")}
 
-      %Types.ErrorEvent{severity: "fatal", message: msg}, {_status, _acc} ->
-        {:error, Error.new(kind: :command_failed, message: msg)}
+      %Types.ErrorEvent{severity: "fatal"} = event, {_status, _acc} ->
+        {:error, error_from_event(event)}
 
       _event, acc ->
         acc
@@ -84,6 +84,45 @@ defmodule GeminiCliSdk do
       {nil, _} -> {:error, Error.new(kind: :no_result, message: "No result received from stream")}
     end
   end
+
+  defp error_from_event(%Types.ErrorEvent{} = event) do
+    Error.new(
+      kind: normalize_error_kind(event.kind, event.message),
+      message: event.message,
+      details: event.stderr,
+      context:
+        %{}
+        |> maybe_put(:details, event.details)
+        |> maybe_put(:stderr_truncated?, event.stderr_truncated?),
+      exit_code: event.exit_code
+    )
+  end
+
+  defp normalize_error_kind(kind, message) when kind in [nil, :unknown],
+    do: infer_error_kind(message)
+
+  defp normalize_error_kind(kind, _message) when is_atom(kind), do: kind
+
+  defp normalize_error_kind(kind, message) when kind in ["", "unknown"],
+    do: infer_error_kind(message)
+
+  defp normalize_error_kind(kind, _message) when is_binary(kind) do
+    kind
+    |> String.downcase()
+    |> String.replace("-", "_")
+    |> String.to_atom()
+  end
+
+  defp normalize_error_kind(_kind, message), do: infer_error_kind(message)
+
+  defp infer_error_kind(message) when is_binary(message) do
+    if String.match?(message, ~r/auth/i), do: :auth_error, else: :command_failed
+  end
+
+  defp infer_error_kind(_message), do: :command_failed
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   # --- Session management ---
 

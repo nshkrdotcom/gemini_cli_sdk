@@ -28,6 +28,12 @@ GeminiCliSdk provides structured error handling through the `GeminiCliSdk.Error`
 | `:command_timeout` | -- | Command exceeded the timeout |
 | `:no_result` | -- | Stream ended without a result event |
 
+On SSH-backed `execution_surface` values, Gemini is resolved on the remote
+host. If the target shell cannot find `gemini`, the SDK returns
+`:cli_not_found` with the remote stderr attached. If Gemini is installed
+outside the remote non-login `PATH`, pass a remote `PATH` override in
+`Options.env`.
+
 ## Synchronous Error Handling
 
 With `run/2`, errors are returned as `{:error, %Error{}}`:

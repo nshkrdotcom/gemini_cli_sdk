@@ -142,6 +142,43 @@ defmodule GeminiCliSdk.Runtime.CLITest do
         File.rm_rf(dir)
       end
     end
+
+    test "does not leak the local cwd into remote session invocations" do
+      dir = TestSupport.tmp_dir!("gemini_runtime_cli_remote_cwd")
+      stub_path = write_runtime_stub!(dir)
+      fake_ssh = FakeSSH.new!()
+      monitor_ref = make_ref()
+
+      try do
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
+          options =
+            Options.validate!(%Options{
+              execution_surface: [
+                surface_kind: :static_ssh,
+                transport_options:
+                  FakeSSH.transport_options(fake_ssh, destination: "gemini-runtime.cwd.example")
+              ],
+              env: %{"PATH" => dir <> ":" <> (System.get_env("PATH") || "")}
+            })
+
+          assert {:ok, session, %{info: info}} =
+                   CLI.start_session(
+                     prompt: "hello over ssh",
+                     options: options,
+                     subscriber: {self(), monitor_ref}
+                   )
+
+          assert info.invocation.cwd == nil
+
+          session_monitor = Process.monitor(session)
+          assert :ok = CLI.close(session)
+          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+        end)
+      after
+        FakeSSH.cleanup(fake_ssh)
+        File.rm_rf(dir)
+      end
+    end
   end
 
   describe "transport wrapper deletion sequencing" do

@@ -1,6 +1,9 @@
 defmodule GeminiCliSdk.Error do
   @moduledoc "Unified error type for the Gemini CLI SDK."
 
+  alias CliSubprocessCore.ProviderCLI.ErrorRuntimeFailure
+  alias CliSubprocessCore.Transport.Error, as: CoreTransportError
+
   @enforce_keys [:kind, :message]
   defexception [:kind, :message, :cause, :details, :context, :exit_code]
 
@@ -12,11 +15,13 @@ defmodule GeminiCliSdk.Error do
           | :stream_start_failed
           | :stream_timeout
           | :transport_error
+          | :transport_exit
           | :parse_error
           | :json_decode_error
           | :unknown_event_type
           | :invalid_event
           | :invalid_configuration
+          | :config_invalid
           | :execution_failed
           | :no_result
           | :auth_error
@@ -49,6 +54,23 @@ defmodule GeminiCliSdk.Error do
     }
   end
 
+  @spec from_runtime_failure(ErrorRuntimeFailure.t(), keyword()) :: t()
+  def from_runtime_failure(%ErrorRuntimeFailure{} = failure, opts \\ []) when is_list(opts) do
+    extra_context =
+      opts
+      |> Keyword.get(:context, %{})
+      |> normalize_context()
+
+    new(
+      kind: runtime_failure_kind(failure),
+      message: Keyword.get(opts, :message, failure.message),
+      cause: Keyword.get(opts, :cause, failure.cause || failure),
+      details: Keyword.get(opts, :details, failure.stderr),
+      context: Map.merge(failure.context || %{}, extra_context),
+      exit_code: Keyword.get(opts, :exit_code, failure.exit_code)
+    )
+  end
+
   @exit_code_map %{
     41 => :auth_error,
     42 => :input_error,
@@ -78,9 +100,41 @@ defmodule GeminiCliSdk.Error do
   end
 
   @spec normalize(term(), keyword()) :: t()
+  def normalize(%__MODULE__{} = error, opts) do
+    new(
+      kind: Keyword.get(opts, :kind, error.kind),
+      message: Keyword.get(opts, :message, error.message),
+      cause: Keyword.get(opts, :cause, error.cause),
+      details: Keyword.get(opts, :details, error.details),
+      context: Keyword.get(opts, :context, error.context),
+      exit_code: Keyword.get(opts, :exit_code, error.exit_code)
+    )
+  end
+
+  def normalize(%ErrorRuntimeFailure{} = failure, opts) do
+    from_runtime_failure(failure, opts)
+  end
+
+  def normalize({:transport, %CoreTransportError{} = error}, opts) do
+    normalize(error, opts)
+  end
+
+  def normalize(%CoreTransportError{} = error, opts) do
+    kind = Keyword.get(opts, :kind, :transport_error)
+
+    new(
+      kind: kind,
+      message: transport_message(error.reason),
+      cause: Keyword.get(opts, :cause, error),
+      details: Keyword.get(opts, :details),
+      context: Map.merge(error.context || %{}, normalize_context(Keyword.get(opts, :context))),
+      exit_code: Keyword.get(opts, :exit_code)
+    )
+  end
+
   def normalize({:transport, reason}, opts) do
     kind = Keyword.get(opts, :kind, :transport_error)
-    message = "Transport error: not connected"
+    message = transport_message(reason)
 
     new(
       kind: kind,
@@ -127,4 +181,18 @@ defmodule GeminiCliSdk.Error do
       cause: reason
     )
   end
+
+  defp runtime_failure_kind(%ErrorRuntimeFailure{kind: :auth_error}), do: :auth_error
+  defp runtime_failure_kind(%ErrorRuntimeFailure{kind: :cli_not_found}), do: :cli_not_found
+  defp runtime_failure_kind(%ErrorRuntimeFailure{kind: :cwd_not_found}), do: :config_invalid
+  defp runtime_failure_kind(%ErrorRuntimeFailure{kind: :process_exit}), do: :transport_exit
+  defp runtime_failure_kind(%ErrorRuntimeFailure{kind: :transport_error}), do: :transport_error
+
+  defp normalize_context(nil), do: %{}
+  defp normalize_context(context) when is_map(context), do: context
+  defp normalize_context(context) when is_list(context), do: Map.new(context)
+  defp normalize_context(context), do: %{context: context}
+
+  defp transport_message(:not_connected), do: "Transport not connected"
+  defp transport_message(reason), do: "Transport error: #{inspect(reason)}"
 end

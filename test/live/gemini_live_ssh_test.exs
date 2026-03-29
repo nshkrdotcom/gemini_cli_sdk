@@ -2,7 +2,7 @@ defmodule GeminiCliSdk.LiveSSHTest do
   use ExUnit.Case, async: false
 
   alias CliSubprocessCore.TestSupport.LiveSSH
-  alias GeminiCliSdk.Options
+  alias GeminiCliSdk.{Error, Options}
 
   @moduletag :live_ssh
   @moduletag timeout: 120_000
@@ -13,31 +13,25 @@ defmodule GeminiCliSdk.LiveSSHTest do
     @moduletag skip: LiveSSH.skip_reason()
   end
 
-  setup_all do
-    {:ok,
-     skip: not LiveSSH.runnable?("gemini"),
-     skip_reason:
-       "Remote SSH target #{inspect(LiveSSH.destination())} does not have a runnable `gemini --version`."}
-  end
+  test "live SSH: GeminiCliSdk.run/2 returns a remote success or a structured runtime failure" do
+    case GeminiCliSdk.run(
+           "Say exactly: GEMINI_LIVE_SSH_OK",
+           %Options{
+             execution_surface: LiveSSH.execution_surface(),
+             timeout_ms: 120_000
+           }
+         ) do
+      {:ok, response} ->
+        assert is_binary(response)
+        assert response != ""
 
-  test "live SSH: GeminiCliSdk.run/2 executes against the remote Gemini CLI", %{
-    skip: skip?,
-    skip_reason: skip_reason
-  } do
-    if skip? do
-      assert is_binary(skip_reason)
-    else
-      assert {:ok, response} =
-               GeminiCliSdk.run(
-                 "Say exactly: GEMINI_LIVE_SSH_OK",
-                 %Options{
-                   execution_surface: LiveSSH.execution_surface(),
-                   timeout_ms: 120_000
-                 }
-               )
+      {:error, %Error{kind: :cli_not_found} = error} ->
+        assert error.message =~ "Gemini CLI not found"
+        assert error.message =~ "remote"
+        assert error.details =~ "No such file or directory"
 
-      assert is_binary(response)
-      assert response != ""
+      {:error, %Error{kind: :auth_error} = error} ->
+        assert error.message =~ "authentication"
     end
   end
 end

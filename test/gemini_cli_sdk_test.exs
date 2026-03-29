@@ -136,14 +136,14 @@ defmodule GeminiCliSdkTest do
       end
     end
 
-    test "returns error when result status is error" do
+    test "returns auth_error when the stream emits a fatal authentication event" do
       dir = TestSupport.tmp_dir!("gemini_api_run_status_error")
       stub_path = write_api_stub!(dir)
       fixture = TestSupport.fixture_path("error_response.jsonl")
 
       try do
         TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
-          assert {:error, %Error{kind: :command_failed}} =
+          assert {:error, %Error{kind: :auth_error}} =
                    GeminiCliSdk.run("bad prompt", %Options{
                      timeout_ms: 5_000,
                      env: %{"GEMINI_TEST_STREAM_FILE" => fixture}

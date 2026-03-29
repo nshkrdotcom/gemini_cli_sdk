@@ -207,17 +207,10 @@ defmodule GeminiCliSdk.Stream do
     end
   end
 
-  defp maybe_attach_stderr(%Types.ErrorEvent{kind: kind} = event, %State{} = state)
-       when kind in [
-              :parse_error,
-              :stream_start_failed,
-              :stream_timeout,
-              :transport_error,
-              :transport_exit
-            ] do
+  defp maybe_attach_stderr(%Types.ErrorEvent{severity: "fatal"} = event, %State{} = state) do
     %Types.ErrorEvent{
       event
-      | stderr: normalize_stderr(state.stderr),
+      | stderr: event.stderr || normalize_stderr(state.stderr),
         stderr_truncated?: state.stderr_truncated?
     }
   end
