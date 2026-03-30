@@ -179,6 +179,38 @@ defmodule GeminiCliSdk.Runtime.CLITest do
         File.rm_rf(dir)
       end
     end
+
+    test "does not leak the local cwd into guest-path session invocations" do
+      dir = TestSupport.tmp_dir!("gemini_runtime_cli_guest_cwd")
+      monitor_ref = make_ref()
+      _stub_path = write_runtime_stub!(dir)
+      path_env = dir <> ":" <> (System.get_env("PATH") || "")
+
+      try do
+        TestSupport.with_env(%{"PATH" => path_env}, fn ->
+          options =
+            Options.validate!(%Options{
+              execution_surface: [surface_kind: :test_guest_local],
+              env: %{"PATH" => path_env}
+            })
+
+          assert {:ok, session, %{info: info}} =
+                   CLI.start_session(
+                     prompt: "hello over guest path semantics",
+                     options: options,
+                     subscriber: {self(), monitor_ref}
+                   )
+
+          assert info.invocation.cwd == nil
+
+          session_monitor = Process.monitor(session)
+          assert :ok = CLI.close(session)
+          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+        end)
+      after
+        File.rm_rf(dir)
+      end
+    end
   end
 
   describe "transport wrapper deletion sequencing" do
