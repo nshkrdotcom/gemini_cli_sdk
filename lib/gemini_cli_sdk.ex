@@ -134,6 +134,10 @@ defmodule GeminiCliSdk do
   @spec list_sessions(keyword()) :: {:ok, String.t()} | {:error, Error.t()}
   defdelegate list_sessions(opts \\ []), to: GeminiCliSdk.Session, as: :list
 
+  @spec list_session_entries(keyword()) ::
+          {:ok, [GeminiCliSdk.Session.Entry.t()]} | {:error, Error.t()}
+  defdelegate list_session_entries(opts \\ []), to: GeminiCliSdk.Session, as: :list_entries
+
   @doc """
   Resumes a previous session and returns a streaming event enumerable.
   """

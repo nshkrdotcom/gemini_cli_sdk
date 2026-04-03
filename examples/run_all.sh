@@ -30,6 +30,8 @@ EXAMPLES=(
   yolo_mode
 )
 
+# `session_management` is the recovery/session-history example for the hardening lane.
+
 run_example() {
   local name="$1"
   local file="examples/${name}.exs"

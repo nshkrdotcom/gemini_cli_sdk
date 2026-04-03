@@ -16,6 +16,16 @@ defmodule GeminiCliSdk.Runtime.CLITest do
     TestSupport.write_executable!(dir, "gemini", script)
   end
 
+  defp write_list_stub!(dir) do
+    script = """
+    #!/usr/bin/env bash
+    set -euo pipefail
+    printf '%s\n' 'Available sessions (2):' '  1. Fix bug [abc123]' '  2. Refactor [def456]'
+    """
+
+    TestSupport.write_executable!(dir, "gemini", script)
+  end
+
   describe "start_session/1" do
     test "builds a core session with Gemini-compatible invocation args and env" do
       dir = TestSupport.tmp_dir!("gemini_runtime_cli")
@@ -217,6 +227,42 @@ defmodule GeminiCliSdk.Runtime.CLITest do
   describe "transport wrapper deletion sequencing" do
     test "records zero surviving Gemini transport wrapper behavior on the active runtime lane" do
       refute File.exists?(Path.expand("../../lib/gemini_cli_sdk/transport.ex", __DIR__))
+    end
+  end
+
+  describe "session control surfaces" do
+    test "capabilities publish session control support" do
+      assert :session_history in CLI.capabilities()
+      assert :session_resume in CLI.capabilities()
+      assert :session_pause in CLI.capabilities()
+      assert :session_intervene in CLI.capabilities()
+    end
+
+    test "list_provider_sessions/1 returns standardized Gemini session entries" do
+      dir = TestSupport.tmp_dir!("gemini_runtime_session_entries")
+      stub_path = write_list_stub!(dir)
+
+      try do
+        TestSupport.with_env(
+          %{
+            "GEMINI_CLI_PATH" => stub_path,
+            "GEMINI_TEST_OUTPUT" =>
+              "Available sessions (2):\n  1. Fix bug [abc123]\n  2. Refactor [def456]"
+          },
+          fn ->
+            assert {:ok, [first, second]} = CLI.list_provider_sessions()
+            assert first.id == "abc123"
+            assert first.label == "Fix bug"
+            assert first.source_kind == :cli_history
+            assert first.metadata.index == 1
+            assert second.id == "def456"
+            assert second.label == "Refactor"
+            assert second.metadata.index == 2
+          end
+        )
+      after
+        File.rm_rf(dir)
+      end
     end
   end
 

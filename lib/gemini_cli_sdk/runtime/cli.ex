@@ -20,6 +20,12 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
   @runtime_metadata %{lane: :gemini_cli_sdk}
   @default_session_event_tag :gemini_cli_sdk_runtime_cli
+  @session_control_capabilities [
+    :session_history,
+    :session_resume,
+    :session_pause,
+    :session_intervene
+  ]
 
   defmodule ProjectionState do
     @moduledoc false
@@ -138,7 +144,28 @@ defmodule GeminiCliSdk.Runtime.CLI do
   def info(session) when is_pid(session), do: Session.info(session)
 
   @spec capabilities() :: [atom()]
-  def capabilities, do: CoreGemini.capabilities()
+  def capabilities do
+    (CoreGemini.capabilities() ++ @session_control_capabilities)
+    |> Enum.uniq()
+  end
+
+  @spec list_provider_sessions(keyword()) :: {:ok, [map()]} | {:error, term()}
+  def list_provider_sessions(opts \\ []) when is_list(opts) do
+    with {:ok, sessions} <- GeminiCliSdk.list_session_entries(opts) do
+      {:ok,
+       Enum.map(sessions, fn session ->
+         %{
+           id: session.id,
+           label: session.label,
+           cwd: nil,
+           updated_at: nil,
+           source_kind: :cli_history,
+           metadata: %{index: session.index},
+           raw: Map.from_struct(session)
+         }
+       end)}
+    end
+  end
 
   @doc false
   @spec session_event_tag() :: atom()

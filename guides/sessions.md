@@ -94,3 +94,12 @@ end)
 # 3. Clean up old sessions
 {:ok, _} = GeminiCliSdk.delete_session("1")
 ```
+## Typed Session Entries
+
+Use `GeminiCliSdk.list_session_entries/1` when you want a structured view of resumable Gemini CLI
+sessions. That API turns the CLI’s human-facing session list into typed entries with stable
+`id`, `label`, and `index` fields.
+
+If you are integrating through a runtime-neutral layer, the equivalent orchestration-facing API is
+`GeminiCliSdk.Runtime.CLI.list_provider_sessions/1`, which projects those entries into the common
+session-history shape used across the stack.

@@ -69,3 +69,11 @@ switches the example to the permissive runtime combination
 - Timeouts are set conservatively; adjust `timeout_ms` if needed
 - Pass example flags after `--` when using `mix run`, for example:
   `mix run examples/streaming.exs -- --ssh-host example.internal --danger-full-access`
+## Recovery-Oriented Examples
+
+The existing example lane already covers the new session surfaces:
+
+- `examples/session_management.exs`
+
+That example is the right place to look for listing and resuming Gemini sessions, and the
+top-level `examples/run_all.sh` runner already includes it in the default sequence.

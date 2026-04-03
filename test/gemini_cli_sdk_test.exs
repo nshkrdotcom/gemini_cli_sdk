@@ -188,6 +188,36 @@ defmodule GeminiCliSdkTest do
       end
     end
 
+    test "list_session_entries/0 parses typed session entries" do
+      dir = TestSupport.tmp_dir!("gemini_api_session_entries")
+      stub_path = write_api_stub!(dir)
+
+      try do
+        TestSupport.with_env(
+          %{
+            "GEMINI_CLI_PATH" => stub_path,
+            "GEMINI_TEST_OUTPUT" =>
+              "Available sessions (2):\n  1. Fix bug [abc123]\n  2. Refactor [def456]"
+          },
+          fn ->
+            assert {:ok, sessions} = GeminiCliSdk.list_session_entries()
+
+            assert [%GeminiCliSdk.Session.Entry{} = first, %GeminiCliSdk.Session.Entry{} = second] =
+                     sessions
+
+            assert first.id == "abc123"
+            assert first.label == "Fix bug"
+            assert first.index == 1
+            assert second.id == "def456"
+            assert second.label == "Refactor"
+            assert second.index == 2
+          end
+        )
+      after
+        File.rm_rf(dir)
+      end
+    end
+
     test "resume_session/3 preserves the resume identifier on the shared runtime lane" do
       dir = TestSupport.tmp_dir!("gemini_api_resume_session")
       args_file = Path.join(dir, "args.txt")

@@ -240,3 +240,17 @@ MIT License. See [LICENSE](LICENSE) for details.
 See [Centralized Model Selection](#centralized-model-selection). The Gemini SDK
 renders provider transport args from the shared resolved payload and does not
 emit nil/null/blank model values.
+## Session Listing And Resume Surfaces
+
+Gemini now exposes a typed session-history projection for orchestration layers that need to recover
+an existing CLI conversation instead of replaying prompts from scratch.
+
+- `GeminiCliSdk.list_session_entries/1` parses the CLI session list into typed
+  `%GeminiCliSdk.Session.Entry{}` values
+- `GeminiCliSdk.Runtime.CLI.capabilities/0` publishes `:session_history`, `:session_resume`,
+  `:session_pause`, and `:session_intervene`
+- `GeminiCliSdk.Runtime.CLI.list_provider_sessions/1` projects those typed entries into the common
+  runtime-neutral list shape used by higher layers
+
+The runtime also now carries `system_prompt` through the validated options surface so the caller can
+resume with the same instruction context it started with.
