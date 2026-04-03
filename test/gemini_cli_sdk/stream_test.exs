@@ -150,6 +150,24 @@ defmodule GeminiCliSdk.StreamTest do
   end
 
   describe "error event handling" do
+    test "startup failures preserve the wrapped provider error kind and cause details" do
+      missing_path = Path.join(TestSupport.tmp_dir!("gemini_missing_cli"), "missing-gemini")
+
+      events =
+        TestSupport.with_env(%{"GEMINI_CLI_PATH" => missing_path}, fn ->
+          GeminiCliSdk.Stream.execute("hello", %GeminiCliSdk.Options{timeout_ms: 1_000})
+          |> Enum.to_list()
+        end)
+
+      assert [%Types.ErrorEvent{} = event] = events
+      assert event.kind == :stream_start_failed
+      assert event.message =~ "GEMINI_CLI_PATH points to non-existent file"
+      assert event.message =~ "missing-gemini"
+      assert is_map(event.details)
+      assert event.details[:underlying_kind] == :cli_not_found
+      assert event.details[:cause] in [":missing", "missing"]
+    end
+
     test "streams error events from CLI" do
       dir = TestSupport.tmp_dir!("gemini_stream_error")
       stub_path = write_stream_stub!(dir)

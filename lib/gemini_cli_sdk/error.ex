@@ -101,12 +101,18 @@ defmodule GeminiCliSdk.Error do
 
   @spec normalize(term(), keyword()) :: t()
   def normalize(%__MODULE__{} = error, opts) do
+    normalized_context =
+      error.context
+      |> normalize_context()
+      |> Map.merge(normalize_context(Keyword.get(opts, :context)))
+      |> maybe_put_wrapped_kind(error.kind, Keyword.get(opts, :kind, error.kind))
+
     new(
       kind: Keyword.get(opts, :kind, error.kind),
       message: Keyword.get(opts, :message, error.message),
-      cause: Keyword.get(opts, :cause, error.cause),
+      cause: Keyword.get(opts, :cause, error.cause || maybe_wrapped_cause(error, opts)),
       details: Keyword.get(opts, :details, error.details),
-      context: Keyword.get(opts, :context, error.context),
+      context: normalized_context,
       exit_code: Keyword.get(opts, :exit_code, error.exit_code)
     )
   end
@@ -192,6 +198,21 @@ defmodule GeminiCliSdk.Error do
   defp normalize_context(context) when is_map(context), do: context
   defp normalize_context(context) when is_list(context), do: Map.new(context)
   defp normalize_context(context), do: %{context: context}
+
+  defp maybe_put_wrapped_kind(context, original_kind, wrapped_kind)
+       when is_atom(original_kind) and is_atom(wrapped_kind) and original_kind != wrapped_kind do
+    Map.put_new(context, :underlying_kind, original_kind)
+  end
+
+  defp maybe_put_wrapped_kind(context, _original_kind, _wrapped_kind), do: context
+
+  defp maybe_wrapped_cause(%__MODULE__{} = error, opts) do
+    if Keyword.has_key?(opts, :kind) and Keyword.get(opts, :kind) != error.kind do
+      error
+    else
+      nil
+    end
+  end
 
   defp transport_message(:not_connected), do: "Transport not connected"
   defp transport_message(reason), do: "Transport error: #{inspect(reason)}"

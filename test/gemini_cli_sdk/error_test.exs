@@ -59,6 +59,16 @@ defmodule GeminiCliSdk.ErrorTest do
     assert error.message =~ "timed out"
   end
 
+  test "normalize/2 preserves the wrapped error kind when adding a startup envelope" do
+    original = Error.new(kind: :cli_not_found, message: "Gemini CLI not found")
+
+    wrapped = Error.normalize(original, kind: :stream_start_failed)
+
+    assert wrapped.kind == :stream_start_failed
+    assert wrapped.context.underlying_kind == :cli_not_found
+    assert %Error{kind: :cli_not_found} = wrapped.cause
+  end
+
   describe "from_exit_code/1" do
     test "maps exit code 0 to success" do
       assert :ok = Error.from_exit_code(0)

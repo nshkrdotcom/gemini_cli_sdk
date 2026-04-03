@@ -122,15 +122,7 @@ defmodule GeminiCliSdk.Stream do
   end
 
   defp receive_next({:error, reason}) do
-    error_event =
-      build_error_event("Failed to start: #{Error.message(reason)}",
-        kind: :stream_start_failed,
-        details: %{
-          cause: inspect(reason)
-        }
-      )
-
-    {[error_event], {:halted}}
+    {[start_failure_event(reason)], {:halted}}
   end
 
   defp receive_next({:halted}), do: {:halt, {:halted}}
@@ -246,6 +238,27 @@ defmodule GeminiCliSdk.Stream do
       stderr_truncated?: Keyword.get(opts, :stderr_truncated?)
     }
   end
+
+  defp start_failure_event(reason) do
+    error = Error.normalize(reason, kind: :stream_start_failed)
+
+    build_error_event(error.message,
+      kind: error.kind,
+      details: start_failure_details(error),
+      exit_code: error.exit_code,
+      stderr: error.details
+    )
+  end
+
+  defp start_failure_details(%Error{} = error) do
+    %{}
+    |> maybe_put(:underlying_kind, error.context && error.context[:underlying_kind])
+    |> maybe_put(:context, error.context)
+    |> maybe_put(:cause, error.cause && inspect(error.cause))
+  end
+
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
   defp mark_done(%State{} = state), do: %{state | done?: true}
 
