@@ -11,7 +11,7 @@ graph TD
     A --> D[Session]
     B --> E[Runtime.CLI]
     E --> F[CliSubprocessCore.Session]
-    F --> G[CliSubprocessCore.Transport]
+    F --> G[ExternalRuntimeTransport.Transport]
     G --> H[Shared transport internals]
     E --> I[CLI]
     E --> J[ArgBuilder]
@@ -46,7 +46,7 @@ Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
 CliSubprocessCore.Session       -- shared common CLI session engine
   |
   v
-CliSubprocessCore.Transport     -- shared raw transport
+ExternalRuntimeTransport.Transport     -- shared raw transport
   |
   v
 gemini CLI process              -- emits JSONL to stdout
@@ -122,7 +122,7 @@ remain core-owned.
 ### `GeminiCliSdk.Transport`
 
 This module is the Gemini-facing raw transport entrypoint backed by
-`CliSubprocessCore.Transport`.
+`ExternalRuntimeTransport.Transport`.
 
 It preserves Gemini's public transport vocabulary while the actual transport
 implementation lives in `cli_subprocess_core`.

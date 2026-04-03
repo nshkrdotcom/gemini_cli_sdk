@@ -11,10 +11,10 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.ExecutionSurface
   alias CliSubprocessCore.Payload
-  alias CliSubprocessCore.ProcessExit, as: CoreProcessExit
   alias CliSubprocessCore.ProviderProfiles.Gemini, as: CoreGemini
   alias CliSubprocessCore.Session
-  alias CliSubprocessCore.Transport.Error, as: CoreTransportError
+  alias ExternalRuntimeTransport.ProcessExit, as: CoreProcessExit
+  alias ExternalRuntimeTransport.Transport.Error, as: CoreTransportError
   alias GeminiCliSdk.{ArgBuilder, Config, Env, Options, Types}
   alias GeminiCliSdk.CLI, as: GeminiCLI
 

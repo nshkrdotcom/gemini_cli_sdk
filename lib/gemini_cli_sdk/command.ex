@@ -5,11 +5,11 @@ defmodule GeminiCliSdk.Command do
 
   alias CliSubprocessCore.Command, as: CoreCommand
   alias CliSubprocessCore.Command.Error, as: CoreCommandError
+  alias CliSubprocessCore.Command.RunResult
   alias CliSubprocessCore.CommandSpec
-  alias CliSubprocessCore.ProcessExit
   alias CliSubprocessCore.ProviderCLI
-  alias CliSubprocessCore.Transport.Error, as: CoreTransportError
-  alias CliSubprocessCore.Transport.RunResult
+  alias ExternalRuntimeTransport.ProcessExit
+  alias ExternalRuntimeTransport.Transport.Error, as: CoreTransportError
   alias GeminiCliSdk.{CLI, Configuration, Env, Error, Options}
 
   @type run_opt ::
