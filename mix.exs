@@ -2,12 +2,10 @@ defmodule GeminiCliSdk.MixProject do
   use Mix.Project
 
   @app :gemini_cli_sdk
-  @version "0.1.0"
+  @version "0.2.0"
   @source_url "https://github.com/nshkrdotcom/gemini_cli_sdk"
   @homepage_url "https://hex.pm/packages/gemini_cli_sdk"
   @docs_url "https://hexdocs.pm/gemini_cli_sdk"
-  @cli_subprocess_core_requirement "~> 0.1.0"
-  @cli_subprocess_core_repo "nshkrdotcom/cli_subprocess_core"
   def project do
     [
       app: @app,
@@ -45,14 +43,14 @@ defmodule GeminiCliSdk.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
-    workspace_deps() ++
-      [
-        {:jason, "~> 1.4"},
-        {:zoi, "~> 0.17"},
-        {:ex_doc, "~> 0.40", only: :dev, runtime: false},
-        {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
-        {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
-      ]
+    [
+      {:cli_subprocess_core, "~> 0.1.0"},
+      {:jason, "~> 1.4"},
+      {:zoi, "~> 0.17"},
+      {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+    ]
   end
 
   defp description do
@@ -73,7 +71,7 @@ defmodule GeminiCliSdk.MixProject do
       },
       maintainers: ["nshkrdotcom"],
       files:
-        ~w(lib guides assets examples/README.md mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+        ~w(lib assets mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 
@@ -199,64 +197,7 @@ defmodule GeminiCliSdk.MixProject do
     [
       plt_add_apps: [:mix],
       plt_core_path: "priv/plts/core",
-      plt_local_path: "priv/plts",
-      plt_ignore_apps: workspace_apps(),
-      paths: [project_ebin_path() | workspace_dialyzer_paths()]
+      plt_local_path: "priv/plts"
     ]
-  end
-
-  defp workspace_deps do
-    Enum.map(workspace_dep_specs(), fn {app, path, requirement, opts} ->
-      workspace_dep(app, path, requirement, opts)
-    end)
-  end
-
-  defp workspace_dep_specs do
-    [
-      {:cli_subprocess_core, "../cli_subprocess_core", @cli_subprocess_core_requirement,
-       github: @cli_subprocess_core_repo, branch: "main"}
-    ]
-  end
-
-  defp workspace_apps do
-    Enum.map(workspace_dep_specs(), &elem(&1, 0))
-  end
-
-  defp workspace_dialyzer_paths do
-    Enum.map(workspace_apps(), fn app ->
-      build_ebin_path(app)
-    end)
-  end
-
-  defp project_ebin_path do
-    build_ebin_path(@app)
-  end
-
-  defp build_ebin_path(app) when is_atom(app) do
-    Path.join(["_build", Atom.to_string(Mix.env()), "lib", Atom.to_string(app), "ebin"])
-  end
-
-  defp workspace_dep(app, path, requirement, opts) do
-    {release_opts, dep_opts} = Keyword.split(opts, [:github, :git, :branch, :tag, :ref])
-    expanded_path = Path.expand(path, __DIR__)
-
-    cond do
-      hex_packaging?() ->
-        {app, requirement, dep_opts}
-
-      workspace_checkout?() and File.dir?(expanded_path) ->
-        {app, Keyword.put(dep_opts, :path, path)}
-
-      true ->
-        {app, Keyword.merge(dep_opts, release_opts)}
-    end
-  end
-
-  defp hex_packaging? do
-    Enum.any?(System.argv(), &String.starts_with?(&1, "hex."))
-  end
-
-  defp workspace_checkout? do
-    not Enum.member?(Path.split(Path.expand(__DIR__)), "deps")
   end
 end
