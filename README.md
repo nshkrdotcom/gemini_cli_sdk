@@ -28,7 +28,7 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Synchronous** -- Simple `{:ok, text} | {:error, error}` for request/response patterns
 - **Session Management** -- List, resume, and delete conversation sessions
 - **Shared Core Runtime** -- Streaming and one-shot command execution now run on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
-- **Subprocess Safety** -- Built on `cli_subprocess_core`, which owns the raw transport lane and the native subprocess runtime used for cleanup and raw process control
+- **Subprocess Safety** -- Built on `cli_subprocess_core`, which now routes the covered local session lane through `ExecutionPlane.Process.Transport` while keeping Gemini-facing types and cleanup semantics stable
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
 - **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O
@@ -125,12 +125,12 @@ The current layering is:
 GeminiCliSdk public API
   -> GeminiCliSdk.Stream / GeminiCliSdk.Runtime.CLI
   -> CliSubprocessCore.Session
-  -> CliSubprocessCore raw transport
+  -> ExecutionPlane.Process.Transport
   -> gemini CLI
 
 GeminiCliSdk command helpers
   -> CliSubprocessCore.Command.run/2
-  -> CliSubprocessCore raw transport
+  -> ExecutionPlane.Process (local) / ExternalRuntimeTransport.Transport (non-local)
   -> gemini CLI
 ```
 
@@ -138,18 +138,20 @@ GeminiCliSdk command helpers
 core sessions, preserves Gemini CLI command resolution and option shaping, and
 projects normalized core events back into `GeminiCliSdk.Types.*`.
 
-The preserved `GeminiCliSdk.Transport` modules are public Gemini entrypoints
-backed by the core raw transport layer instead of owning a separate subprocess
-runtime.
+No Gemini-owned raw transport module remains for the covered lane. The SDK keeps
+Gemini-specific command resolution, option shaping, and event projection above
+the shared core and Execution Plane-backed lower transport seam.
 
 ## Ownership Boundary
 
-The final Phase 4 boundary for Gemini is:
+The Wave 6 boundary for Gemini is:
 
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
-- shared raw transport ownership inside `cli_subprocess_core`
-- shared non-PTY command execution for session management and version helpers
+- shared local session transport ownership through `ExecutionPlane.Process.Transport`
+- shared command execution through `CliSubprocessCore.Command`, with local one-shot
+  execution routed through `ExecutionPlane.Process` and non-local execution
+  staying on the external transport substrate
 
 Public Gemini entrypoints stay the same:
 
@@ -164,8 +166,7 @@ this repo above the shared core.
 
 No separate Gemini-owned common subprocess runtime remains here. Repo-local
 ownership is limited to Gemini CLI discovery, argument and environment shaping,
-typed event/result projection, and the public Gemini transport surface above
-the shared core.
+and typed event/result projection above the shared core.
 
 The release and composition model is:
 

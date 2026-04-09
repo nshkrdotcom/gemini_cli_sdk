@@ -110,7 +110,7 @@ The stream guarantees cleanup in all cases:
 
 - **Full consumption** (`Enum.to_list/1`, `Enum.each/2`): cleanup runs after the last event
 - **Early halt** (`Enum.take/2`, `Stream.take_while/2`): the core session is closed immediately
-- **Process death**: the core session owns the raw transport and shuts down the OS process
+- **Process death**: the core session owns the Execution Plane-backed transport handle and shuts down the OS process
 
 ## Tool Use Events
 

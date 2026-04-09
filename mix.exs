@@ -44,7 +44,7 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
-      {:cli_subprocess_core, "~> 0.1.0"},
+      {:cli_subprocess_core, path: "../cli_subprocess_core"},
       {:jason, "~> 1.4"},
       {:zoi, "~> 0.17"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
@@ -70,8 +70,7 @@ defmodule GeminiCliSdk.MixProject do
         "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
       },
       maintainers: ["nshkrdotcom"],
-      files:
-        ~w(lib assets mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files: ~w(lib assets mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
     ]
   end
 
@@ -145,8 +144,7 @@ defmodule GeminiCliSdk.MixProject do
           GeminiCliSdk.Stream,
           GeminiCliSdk.Runtime.CLI,
           GeminiCliSdk.Command,
-          GeminiCliSdk.Session,
-          GeminiCliSdk.Transport
+          GeminiCliSdk.Session
         ]
       ],
       before_closing_head_tag: &before_closing_head_tag/1,

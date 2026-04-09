@@ -11,19 +11,19 @@ graph TD
     A --> D[Session]
     B --> E[Runtime.CLI]
     E --> F[CliSubprocessCore.Session]
-    F --> G[ExternalRuntimeTransport.Transport]
-    G --> H[Shared transport internals]
+    F --> G[ExecutionPlane.Process.Transport]
+    G --> H[ExternalRuntimeTransport.Transport internals]
     E --> I[CLI]
     E --> J[ArgBuilder]
     E --> K[Env]
     E --> L[Config]
     B --> M[Types]
     C --> Q[CliSubprocessCore.Command]
+    Q --> R[ExecutionPlane.Process / ExternalRuntimeTransport.Transport]
     C --> I
     B --> O[Configuration]
     C --> O
     D --> B
-    P[GeminiCliSdk.Transport adapter] --> G
 ```
 
 ## Data Flow
@@ -46,7 +46,7 @@ Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
 CliSubprocessCore.Session       -- shared common CLI session engine
   |
   v
-ExternalRuntimeTransport.Transport     -- shared raw transport
+ExecutionPlane.Process.Transport -- shared local session transport seam
   |
   v
 gemini CLI process              -- emits JSONL to stdout
@@ -119,14 +119,6 @@ The runtime kit uses a small Gemini invocation profile for command
 construction only. Parsing, event normalization, and subprocess ownership
 remain core-owned.
 
-### `GeminiCliSdk.Transport`
-
-This module is the Gemini-facing raw transport entrypoint backed by
-`ExternalRuntimeTransport.Transport`.
-
-It preserves Gemini's public transport vocabulary while the actual transport
-implementation lives in `cli_subprocess_core`.
-
 ### `GeminiCliSdk.Types`
 
 Defines the 6 public event structs and the `parse_event/1` helper used by the
@@ -176,7 +168,7 @@ Centralizes all numeric constants (timeouts, buffer sizes, limits). Every intern
 ## OTP Integration
 
 `cli_subprocess_core` starts the shared `Task.Supervisor` and provider registry
-used by the core session and transport layers.
+used by the core session lane and command/runtime layers.
 
 GeminiCliSdk keeps its own OTP application module for SDK-local processes and
 backwards-compatible application startup.
