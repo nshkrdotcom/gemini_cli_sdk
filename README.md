@@ -130,7 +130,7 @@ GeminiCliSdk public API
 
 GeminiCliSdk command helpers
   -> CliSubprocessCore.Command.run/2
-  -> ExecutionPlane.Process (local) / ExternalRuntimeTransport.Transport (non-local)
+  -> ExecutionPlane.Process (local) / ExecutionPlane.Process.Transport (non-local)
   -> gemini CLI
 ```
 
@@ -151,7 +151,7 @@ The Wave 6 boundary for Gemini is:
 - shared local session transport ownership through `ExecutionPlane.Process.Transport`
 - shared command execution through `CliSubprocessCore.Command`, with local one-shot
   execution routed through `ExecutionPlane.Process` and non-local execution
-  staying on the external transport substrate
+  routed through `ExecutionPlane.Process.Transport`
 
 Public Gemini entrypoints stay the same:
 

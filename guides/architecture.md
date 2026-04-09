@@ -12,14 +12,13 @@ graph TD
     B --> E[Runtime.CLI]
     E --> F[CliSubprocessCore.Session]
     F --> G[ExecutionPlane.Process.Transport]
-    G --> H[ExternalRuntimeTransport.Transport internals]
     E --> I[CLI]
     E --> J[ArgBuilder]
     E --> K[Env]
     E --> L[Config]
     B --> M[Types]
     C --> Q[CliSubprocessCore.Command]
-    Q --> R[ExecutionPlane.Process / ExternalRuntimeTransport.Transport]
+    Q --> R[ExecutionPlane.Process / ExecutionPlane.Process.Transport]
     C --> I
     B --> O[Configuration]
     C --> O
