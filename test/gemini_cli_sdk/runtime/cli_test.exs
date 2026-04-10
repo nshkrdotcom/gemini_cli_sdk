@@ -3,7 +3,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
 
   alias CliSubprocessCore.{Event, Payload}
   alias CliSubprocessCore.TestSupport.FakeSSH
-  alias ExternalRuntimeTransport.ProcessExit
+  alias ExecutionPlane.ProcessExit
   alias GeminiCliSdk.{Options, Runtime.CLI, TestSupport, Types}
 
   defp write_runtime_stub!(dir) do

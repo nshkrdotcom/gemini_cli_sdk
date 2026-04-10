@@ -2,7 +2,7 @@ defmodule GeminiCliSdk.Error do
   @moduledoc "Unified error type for the Gemini CLI SDK."
 
   alias CliSubprocessCore.ProviderCLI.ErrorRuntimeFailure
-  alias ExternalRuntimeTransport.Transport.Error, as: CoreTransportError
+  alias ExecutionPlane.Process.Transport.Error, as: CoreTransportError
 
   @enforce_keys [:kind, :message]
   defexception [:kind, :message, :cause, :details, :context, :exit_code]

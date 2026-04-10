@@ -3,6 +3,10 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
 
   @project_root Path.expand("../..", __DIR__)
   @legacy_backend Enum.join(["erl", "exec"])
+  @forbidden_tokens [
+    "ExternalRuntimeTransport",
+    "external_runtime_transport"
+  ]
   @stale_runtime_owner_tokens [
     "ExternalRuntimeTransport.Transport internals",
     "ExecutionPlane.Process (local) / ExternalRuntimeTransport.Transport (non-local)"
@@ -11,12 +15,20 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
     "lib",
     "test",
     "mix.exs",
+    "mix.lock",
+    "README.md",
+    "guides"
+  ]
+  @legacy_backend_paths [
+    "lib",
+    "test",
+    "mix.exs",
     "README.md",
     "guides"
   ]
 
   test "shared CLI surfaces do not mention the legacy backend token" do
-    Enum.each(expanded_files(), fn path ->
+    Enum.each(expanded_files(@legacy_backend_paths), fn path ->
       if path != __ENV__.file do
         refute File.read!(path) =~ @legacy_backend,
                "unexpected legacy backend token in #{Path.relative_to(path, @project_root)}"
@@ -25,7 +37,7 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
   end
 
   test "public docs do not describe external_runtime_transport as the active runtime owner" do
-    Enum.each(expanded_files(), fn path ->
+    Enum.each(expanded_files(@paths), fn path ->
       if path != __ENV__.file do
         contents = File.read!(path)
 
@@ -37,8 +49,21 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
     end)
   end
 
-  defp expanded_files do
-    @paths
+  test "repo contains no external runtime transport references" do
+    Enum.each(expanded_files(@paths), fn path ->
+      if path != __ENV__.file do
+        contents = File.read!(path)
+
+        Enum.each(@forbidden_tokens, fn token ->
+          refute contents =~ token,
+                 "unexpected forbidden token #{inspect(token)} in #{Path.relative_to(path, @project_root)}"
+        end)
+      end
+    end)
+  end
+
+  defp expanded_files(paths) do
+    paths
     |> Enum.flat_map(fn relative ->
       full_path = Path.join(@project_root, relative)
 
