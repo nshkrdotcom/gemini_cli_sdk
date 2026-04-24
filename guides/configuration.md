@@ -4,7 +4,7 @@ The `GeminiCliSdk.Configuration` module preserves the SDK's numeric defaults for
 timeouts, buffer sizes, and compatibility limits.
 
 After the runtime replatform, the shared streaming/session lane runs on
-`cli_subprocess_core` with `ExecutionPlane.Process.Transport` underneath for
+`cli_subprocess_core` with the `CliSubprocessCore` transport facade underneath for
 the covered local session lane. That means the core owns most lower transport
 tuning. GeminiCliSdk still uses these values for:
 

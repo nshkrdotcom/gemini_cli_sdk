@@ -1,9 +1,8 @@
 defmodule GeminiCliSdk.Runtime.CLITest do
   use ExUnit.Case, async: false
 
-  alias CliSubprocessCore.{Event, Payload}
+  alias CliSubprocessCore.{Event, Payload, ProcessExit}
   alias CliSubprocessCore.TestSupport.FakeSSH
-  alias ExecutionPlane.ProcessExit
   alias GeminiCliSdk.{Options, Runtime.CLI, TestSupport, Types}
 
   defp write_runtime_stub!(dir) do
@@ -340,7 +339,7 @@ defmodule GeminiCliSdk.Runtime.CLITest do
 
       exit_result =
         Event.new(:result,
-          raw: %{exit: %ProcessExit{status: :success, code: 0, reason: :normal}},
+          raw: %{exit: ProcessExit.from_reason(:normal)},
           payload: Payload.Result.new(status: :completed)
         )
 

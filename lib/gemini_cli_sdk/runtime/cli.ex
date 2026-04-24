@@ -11,10 +11,10 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias CliSubprocessCore.Event, as: CoreEvent
   alias CliSubprocessCore.ExecutionSurface
   alias CliSubprocessCore.Payload
+  alias CliSubprocessCore.ProcessExit, as: CoreProcessExit
   alias CliSubprocessCore.ProviderProfiles.Gemini, as: CoreGemini
   alias CliSubprocessCore.Session
-  alias ExecutionPlane.Process.Transport.Error, as: CoreTransportError
-  alias ExecutionPlane.ProcessExit, as: CoreProcessExit
+  alias CliSubprocessCore.TransportError, as: CoreTransportError
   alias GeminiCliSdk.{ArgBuilder, Config, Env, Options, Types}
   alias GeminiCliSdk.CLI, as: GeminiCLI
 
@@ -186,23 +186,25 @@ defmodule GeminiCliSdk.Runtime.CLI do
     project_core_runtime_event(raw, payload, state)
   end
 
-  def project_event(
-        %CoreEvent{kind: :result, raw: %{exit: %CoreProcessExit{} = exit}},
-        %ProjectionState{} = state
-      ) do
-    if state.result_received? do
-      {[], state}
-    else
-      event =
-        %Types.ErrorEvent{
-          severity: "fatal",
-          message: exit_message(exit),
-          kind: :transport_exit,
-          exit_code: exit.code,
-          details: %{reason: inspect(exit.reason)}
-        }
+  def project_event(%CoreEvent{kind: :result, raw: %{exit: exit}}, %ProjectionState{} = state) do
+    cond do
+      not CoreProcessExit.match?(exit) ->
+        {[], state}
 
-      {[event], track_event(state, event)}
+      state.result_received? ->
+        {[], state}
+
+      true ->
+        event =
+          %Types.ErrorEvent{
+            severity: "fatal",
+            message: exit_message(exit),
+            kind: :transport_exit,
+            exit_code: CoreProcessExit.code(exit),
+            details: %{reason: inspect(CoreProcessExit.reason(exit))}
+          }
+
+        {[event], track_event(state, event)}
     end
   end
 
@@ -349,69 +351,65 @@ defmodule GeminiCliSdk.Runtime.CLI do
     end
   end
 
-  defp project_core_runtime_event(
-         %{exit: %CoreProcessExit{} = exit},
-         %Payload.Error{} = payload,
-         state
-       ) do
-    runtime_failure = payload_runtime_failure(payload)
+  defp project_core_runtime_event(raw, %Payload.Error{} = payload, state) do
+    cond do
+      is_map(raw) and CoreProcessExit.match?(Map.get(raw, :exit)) ->
+        exit = Map.fetch!(raw, :exit)
+        runtime_failure = payload_runtime_failure(payload)
 
-    event =
-      %Types.ErrorEvent{
-        severity: "fatal",
-        message: payload.message || exit_message(exit),
-        kind: normalize_kind(payload.code) || :transport_exit,
-        exit_code: runtime_failure_exit_code(runtime_failure, exit),
-        details:
-          payload.metadata
-          |> stringify_keys()
-          |> Map.put_new("reason", inspect(exit.reason))
-          |> Map.put_new("exit_code", exit.code)
-      }
+        event =
+          %Types.ErrorEvent{
+            severity: "fatal",
+            message: payload.message || exit_message(exit),
+            kind: normalize_kind(payload.code) || :transport_exit,
+            exit_code: runtime_failure_exit_code(runtime_failure, exit),
+            details:
+              payload.metadata
+              |> stringify_keys()
+              |> Map.put_new("reason", inspect(CoreProcessExit.reason(exit)))
+              |> Map.put_new("exit_code", CoreProcessExit.code(exit))
+          }
 
-    {[event], track_event(state, event)}
-  end
+        {[event], track_event(state, event)}
 
-  defp project_core_runtime_event(
-         %CoreTransportError{} = error,
-         %Payload.Error{} = payload,
-         state
-       ) do
-    event =
-      %Types.ErrorEvent{
-        severity: "fatal",
-        message: "Transport error: #{payload.message}",
-        kind: :transport_error,
-        details: %{cause: inspect(error.reason), context: error.context}
-      }
+      CoreTransportError.match?(raw) ->
+        event =
+          %Types.ErrorEvent{
+            severity: "fatal",
+            message: "Transport error: #{payload.message}",
+            kind: :transport_error,
+            details: %{
+              cause: inspect(CoreTransportError.reason(raw)),
+              context: CoreTransportError.context(raw)
+            }
+          }
 
-    {[event], track_event(state, event)}
-  end
+        {[event], track_event(state, event)}
 
-  defp project_core_runtime_event(_raw, %Payload.Error{code: "parse_error"} = payload, state) do
-    line = Map.get(payload.metadata, :line) || Map.get(payload.metadata, "line")
+      payload.code == "parse_error" ->
+        line = Map.get(payload.metadata, :line) || Map.get(payload.metadata, "line")
 
-    event =
-      %Types.ErrorEvent{
-        severity: "fatal",
-        message: "JSON parse error: #{payload.message}",
-        kind: :parse_error,
-        details: %{cause: inspect(line)}
-      }
+        event =
+          %Types.ErrorEvent{
+            severity: "fatal",
+            message: "JSON parse error: #{payload.message}",
+            kind: :parse_error,
+            details: %{cause: inspect(line)}
+          }
 
-    {[event], track_event(state, event)}
-  end
+        {[event], track_event(state, event)}
 
-  defp project_core_runtime_event(_raw, %Payload.Error{} = payload, state) do
-    event =
-      %Types.ErrorEvent{
-        severity: "fatal",
-        message: payload.message,
-        kind: normalize_kind(payload.code),
-        details: stringify_keys(payload.metadata)
-      }
+      true ->
+        event =
+          %Types.ErrorEvent{
+            severity: "fatal",
+            message: payload.message,
+            kind: normalize_kind(payload.code),
+            details: stringify_keys(payload.metadata)
+          }
 
-    {[event], track_event(state, event)}
+        {[event], track_event(state, event)}
+    end
   end
 
   defp project_core_runtime_event(_raw, _payload, state), do: {[], state}
@@ -430,9 +428,8 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
   defp payload_runtime_failure(_payload), do: %{}
 
-  defp runtime_failure_exit_code(runtime_failure, %CoreProcessExit{} = exit)
-       when is_map(runtime_failure) do
-    runtime_failure["exit_code"] || runtime_failure[:exit_code] || exit.code
+  defp runtime_failure_exit_code(runtime_failure, exit) when is_map(runtime_failure) do
+    runtime_failure["exit_code"] || runtime_failure[:exit_code] || CoreProcessExit.code(exit)
   end
 
   defp stringify_keys(map) when is_map(map) do
@@ -455,15 +452,23 @@ defmodule GeminiCliSdk.Runtime.CLI do
     |> String.to_atom()
   end
 
-  defp exit_message(%CoreProcessExit{code: code}) when is_integer(code),
-    do: "CLI exited with code #{code}"
+  defp exit_message(exit) do
+    code = CoreProcessExit.code(exit)
+    status = CoreProcessExit.status(exit)
+    signal = CoreProcessExit.signal(exit)
+    reason = CoreProcessExit.reason(exit)
 
-  defp exit_message(%CoreProcessExit{status: :signal, signal: signal}) do
-    "CLI terminated by signal #{inspect(signal)}"
+    cond do
+      is_integer(code) ->
+        "CLI exited with code #{code}"
+
+      status == :signal ->
+        "CLI terminated by signal #{inspect(signal)}"
+
+      true ->
+        "CLI process exited: #{inspect(reason)}"
+    end
   end
-
-  defp exit_message(%CoreProcessExit{reason: reason}),
-    do: "CLI process exited: #{inspect(reason)}"
 
   defp cleanup_temp_dir(nil), do: :ok
   defp cleanup_temp_dir(temp_dir), do: Config.cleanup(temp_dir)

@@ -2,7 +2,7 @@ defmodule GeminiCliSdk.Error do
   @moduledoc "Unified error type for the Gemini CLI SDK."
 
   alias CliSubprocessCore.ProviderCLI.ErrorRuntimeFailure
-  alias ExecutionPlane.Process.Transport.Error, as: CoreTransportError
+  alias CliSubprocessCore.TransportError, as: CoreTransportError
 
   @enforce_keys [:kind, :message]
   defexception [:kind, :message, :cause, :details, :context, :exit_code]
@@ -121,35 +121,47 @@ defmodule GeminiCliSdk.Error do
     from_runtime_failure(failure, opts)
   end
 
-  def normalize({:transport, %CoreTransportError{} = error}, opts) do
-    normalize(error, opts)
+  def normalize({:transport, reason}, opts) do
+    if CoreTransportError.match?(reason) do
+      normalize_transport_error(reason, opts)
+    else
+      kind = Keyword.get(opts, :kind, :transport_error)
+      message = transport_message(reason)
+
+      new(
+        kind: kind,
+        message: message,
+        cause: {:transport, reason}
+      )
+    end
   end
 
-  def normalize(%CoreTransportError{} = error, opts) do
+  def normalize(reason, opts) do
+    if CoreTransportError.match?(reason) do
+      normalize_transport_error(reason, opts)
+    else
+      normalize_non_transport(reason, opts)
+    end
+  end
+
+  defp normalize_transport_error(error, opts) do
     kind = Keyword.get(opts, :kind, :transport_error)
 
     new(
       kind: kind,
-      message: transport_message(error.reason),
+      message: transport_message(CoreTransportError.reason(error)),
       cause: Keyword.get(opts, :cause, error),
       details: Keyword.get(opts, :details),
-      context: Map.merge(error.context || %{}, normalize_context(Keyword.get(opts, :context))),
+      context:
+        Map.merge(
+          CoreTransportError.context(error),
+          normalize_context(Keyword.get(opts, :context))
+        ),
       exit_code: Keyword.get(opts, :exit_code)
     )
   end
 
-  def normalize({:transport, reason}, opts) do
-    kind = Keyword.get(opts, :kind, :transport_error)
-    message = transport_message(reason)
-
-    new(
-      kind: kind,
-      message: message,
-      cause: {:transport, reason}
-    )
-  end
-
-  def normalize(:timeout, opts) do
+  defp normalize_non_transport(:timeout, opts) do
     kind = Keyword.get(opts, :kind, :stream_timeout)
 
     new(
@@ -158,7 +170,7 @@ defmodule GeminiCliSdk.Error do
     )
   end
 
-  def normalize(reason, opts) when is_binary(reason) do
+  defp normalize_non_transport(reason, opts) when is_binary(reason) do
     kind = Keyword.get(opts, :kind, :unknown)
 
     new(
@@ -168,7 +180,7 @@ defmodule GeminiCliSdk.Error do
     )
   end
 
-  def normalize(reason, opts) when is_atom(reason) do
+  defp normalize_non_transport(reason, opts) when is_atom(reason) do
     kind = Keyword.get(opts, :kind, :unknown)
 
     new(
@@ -178,7 +190,7 @@ defmodule GeminiCliSdk.Error do
     )
   end
 
-  def normalize(reason, opts) do
+  defp normalize_non_transport(reason, opts) do
     kind = Keyword.get(opts, :kind, :unknown)
 
     new(

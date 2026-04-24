@@ -28,7 +28,7 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Synchronous** -- Simple `{:ok, text} | {:error, error}` for request/response patterns
 - **Session Management** -- List, resume, and delete conversation sessions
 - **Shared Core Runtime** -- Streaming and one-shot command execution now run on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
-- **Subprocess Safety** -- Built on `cli_subprocess_core`, which now routes the covered local session lane through `ExecutionPlane.Process.Transport` while keeping Gemini-facing types and cleanup semantics stable
+- **Subprocess Safety** -- Built on `cli_subprocess_core`, which now routes the covered local session lane through the `CliSubprocessCore` transport facade while keeping Gemini-facing types and cleanup semantics stable
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
 - **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O
@@ -125,12 +125,12 @@ The current layering is:
 GeminiCliSdk public API
   -> GeminiCliSdk.Stream / GeminiCliSdk.Runtime.CLI
   -> CliSubprocessCore.Session
-  -> ExecutionPlane.Process.Transport
+  -> CliSubprocessCore transport facade
   -> gemini CLI
 
 GeminiCliSdk command helpers
   -> CliSubprocessCore.Command.run/2
-  -> ExecutionPlane.Process (local) / ExecutionPlane.Process.Transport (non-local)
+  -> CliSubprocessCore process lane (local) / CliSubprocessCore transport facade (non-local)
   -> gemini CLI
 ```
 
@@ -148,10 +148,10 @@ The Wave 6 boundary for Gemini is:
 
 - shared session lifecycle
 - shared JSONL parsing and normalized event flow
-- shared local session transport ownership through `ExecutionPlane.Process.Transport`
+- shared local session transport ownership through the `CliSubprocessCore` transport facade
 - shared command execution through `CliSubprocessCore.Command`, with local one-shot
-  execution routed through `ExecutionPlane.Process` and non-local execution
-  routed through `ExecutionPlane.Process.Transport`
+  execution routed through the `CliSubprocessCore` process lane and non-local
+  execution routed through the `CliSubprocessCore` transport facade
 
 Public Gemini entrypoints stay the same:
 

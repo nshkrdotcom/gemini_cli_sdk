@@ -7,9 +7,9 @@ defmodule GeminiCliSdk.Command do
   alias CliSubprocessCore.Command.Error, as: CoreCommandError
   alias CliSubprocessCore.Command.RunResult
   alias CliSubprocessCore.CommandSpec
+  alias CliSubprocessCore.ProcessExit
   alias CliSubprocessCore.ProviderCLI
-  alias ExecutionPlane.Process.Transport.Error, as: CoreTransportError
-  alias ExecutionPlane.ProcessExit
+  alias CliSubprocessCore.TransportError, as: CoreTransportError
   alias GeminiCliSdk.{CLI, Configuration, Env, Error, Options}
 
   @type run_opt ::
@@ -61,20 +61,19 @@ defmodule GeminiCliSdk.Command do
   end
 
   defp handle_run_result(
-         %RunResult{exit: %ProcessExit{status: :success}} = result,
-         _command,
-         _command_args,
-         _opts
-       ) do
-    {:ok, result |> combined_output() |> String.trim()}
-  end
-
-  defp handle_run_result(
-         %RunResult{exit: %ProcessExit{} = exit} = result,
+         %RunResult{exit: exit} = result,
          command,
          command_args,
          opts
        ) do
+    if ProcessExit.successful?(exit) do
+      {:ok, result |> combined_output() |> String.trim()}
+    else
+      handle_failed_run_result(result, command, command_args, opts)
+    end
+  end
+
+  defp handle_failed_run_result(%RunResult{exit: exit} = result, command, command_args, opts) do
     failure =
       ProviderCLI.runtime_failure(
         :gemini,
@@ -86,7 +85,7 @@ defmodule GeminiCliSdk.Command do
       )
 
     error =
-      case {failure.kind, Error.from_exit_code(exit.code || 1)} do
+      case {failure.kind, Error.from_exit_code(ProcessExit.code(exit) || 1)} do
         {:process_exit, %Error{} = classified}
         when classified.kind in [:auth_error, :input_error, :config_error, :user_cancelled] ->
           %Error{
@@ -102,7 +101,7 @@ defmodule GeminiCliSdk.Command do
             message: failure.message,
             details: combined_output(result),
             context: %{program: command.program, args: command_args},
-            exit_code: exit.code
+            exit_code: ProcessExit.code(exit)
           )
 
         _other ->
@@ -115,21 +114,29 @@ defmodule GeminiCliSdk.Command do
   end
 
   defp translate_command_error(
-         %CoreCommandError{reason: {:transport, %CoreTransportError{reason: :timeout}}},
+         %CoreCommandError{reason: {:transport, error}} = command_error,
          timeout,
          command,
          args,
-         _opts
+         opts
        ) do
-    Error.new(
-      kind: :command_timeout,
-      message: "Command timed out after #{timeout}ms",
-      exit_code: 124,
-      context: %{program: command.program, args: args}
-    )
+    if CoreTransportError.reason(error) == :timeout do
+      Error.new(
+        kind: :command_timeout,
+        message: "Command timed out after #{timeout}ms",
+        exit_code: 124,
+        context: %{program: command.program, args: args}
+      )
+    else
+      translate_non_timeout_command_error(command_error, command, args, opts)
+    end
   end
 
   defp translate_command_error(%CoreCommandError{} = error, _timeout, command, args, opts) do
+    translate_non_timeout_command_error(error, command, args, opts)
+  end
+
+  defp translate_non_timeout_command_error(%CoreCommandError{} = error, command, args, opts) do
     reason = unwrap_command_error_reason(error)
 
     if provider_runtime_reason?(reason) do
@@ -157,17 +164,16 @@ defmodule GeminiCliSdk.Command do
 
   defp combined_output(%RunResult{} = result), do: result.stdout <> result.stderr
 
-  defp unwrap_command_error_reason(%CoreCommandError{
-         reason: {:transport, %CoreTransportError{reason: reason}}
-       }),
-       do: reason
+  defp unwrap_command_error_reason(%CoreCommandError{reason: {:transport, error}}) do
+    if CoreTransportError.match?(error), do: CoreTransportError.reason(error), else: error
+  end
 
   defp unwrap_command_error_reason(%CoreCommandError{reason: reason}), do: reason
 
-  defp provider_runtime_reason?(%CoreTransportError{}), do: true
-  defp provider_runtime_reason?({:transport, %CoreTransportError{}}), do: true
-  defp provider_runtime_reason?(%ProcessExit{}), do: true
-  defp provider_runtime_reason?(_reason), do: false
+  defp provider_runtime_reason?({:transport, reason}), do: CoreTransportError.match?(reason)
+
+  defp provider_runtime_reason?(reason),
+    do: CoreTransportError.match?(reason) or ProcessExit.match?(reason)
 
   defp normalize_env(nil), do: %{}
   defp normalize_env(env) when is_map(env) or is_list(env), do: Env.normalize_overrides(env)

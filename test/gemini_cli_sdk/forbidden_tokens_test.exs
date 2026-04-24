@@ -9,7 +9,10 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
   ]
   @stale_runtime_owner_tokens [
     "ExternalRuntimeTransport.Transport internals",
-    "ExecutionPlane.Process (local) / ExternalRuntimeTransport.Transport (non-local)"
+    Enum.join([
+      "ExecutionPlane",
+      ".Process (local) / ExternalRuntimeTransport.Transport (non-local)"
+    ])
   ]
   @paths [
     "lib",

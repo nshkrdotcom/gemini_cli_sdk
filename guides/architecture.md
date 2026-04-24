@@ -11,14 +11,14 @@ graph TD
     A --> D[Session]
     B --> E[Runtime.CLI]
     E --> F[CliSubprocessCore.Session]
-    F --> G[ExecutionPlane.Process.Transport]
+    F --> G[CliSubprocessCore transport facade]
     E --> I[CLI]
     E --> J[ArgBuilder]
     E --> K[Env]
     E --> L[Config]
     B --> M[Types]
     C --> Q[CliSubprocessCore.Command]
-    Q --> R[ExecutionPlane.Process / ExecutionPlane.Process.Transport]
+    Q --> R[CliSubprocessCore process lane / CliSubprocessCore transport facade]
     C --> I
     B --> O[Configuration]
     C --> O
@@ -45,7 +45,7 @@ Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
 CliSubprocessCore.Session       -- shared common CLI session engine
   |
   v
-ExecutionPlane.Process.Transport -- shared local session transport seam
+CliSubprocessCore transport facade -- shared local session transport seam
   |
   v
 gemini CLI process              -- emits JSONL to stdout
