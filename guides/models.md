@@ -17,22 +17,32 @@ That means:
 
 ## Available Models
 
-The Gemini CLI supports these models:
+The shared core registry allows these Gemini CLI model values:
 
 | Model | Family | Description |
 |-------|--------|-------------|
-| `gemini-2.5-pro` | 2.5 (stable) | Most capable model for complex reasoning |
-| `gemini-2.5-flash` | 2.5 (stable) | Fast, balanced model for most tasks |
-| `gemini-2.5-flash-lite` | 2.5 (stable) | Fastest model for simple tasks |
-| `gemini-3-pro-preview` | 3 (preview) | Next-gen pro model (requires preview features) |
-| `gemini-3-flash-preview` | 3 (preview) | Next-gen flash model (requires preview features) |
+| `auto-gemini-3` | CLI virtual | Gemini CLI automatic routing for Gemini 3 models |
+| `auto-gemini-2.5` | CLI virtual | Gemini CLI automatic routing for Gemini 2.5 models |
+| `pro` | CLI alias | Gemini CLI pro alias |
+| `flash` | CLI alias | Gemini CLI flash alias |
+| `flash-lite` | CLI alias | Gemini CLI flash-lite alias |
+| `gemini-3.1-pro-preview` | 3.1 preview | Gemini 3.1 pro preview model |
+| `gemini-3-flash-preview` | 3 preview | Gemini 3 flash preview model |
+| `gemini-3.1-flash-lite-preview` | 3.1 preview | Gemini 3.1 flash-lite preview model |
+| `gemini-2.5-pro` | 2.5 stable | Gemini 2.5 pro model |
+| `gemini-2.5-flash` | 2.5 stable | Gemini 2.5 flash model |
+| `gemini-2.5-flash-lite` | 2.5 stable | Gemini 2.5 flash-lite model |
+
+The `auto-*`, `pro`, `flash`, and `flash-lite` values are passed through as
+Gemini CLI model values. They are not resolved by this SDK into concrete API
+model ids.
 
 ## Built-in Defaults
 
 | Function | Default Value | Description |
 |----------|---------------|-------------|
-| `Models.default_model/0` | `"gemini-2.5-pro"` | Most capable stable model |
-| `Models.fast_model/0` | `"gemini-2.5-flash"` | Optimized for speed and cost |
+| `Models.default_model/0` | `"auto-gemini-3"` | Gemini CLI automatic Gemini 3 routing |
+| `Models.fast_model/0` | `"gemini-3.1-flash-lite-preview"` | Optimized for speed and cost |
 
 ```elixir
 alias GeminiCliSdk.Models
@@ -45,70 +55,71 @@ opts = %GeminiCliSdk.Options{model: Models.fast_model()}
 
 # List all built-in models
 Models.available_models()
-# => ["gemini-2.5-pro", "gemini-2.5-flash"]
+# => ["auto-gemini-3", "auto-gemini-2.5", ...]
 ```
 
 ## Aliases
 
-Short aliases expand to full model names via `Models.resolve/1`:
+`Models.resolve/1` validates Gemini CLI model values and expands local
+convenience aliases:
 
 ```elixir
-Models.resolve("pro")     # => "gemini-2.5-pro"
-Models.resolve("flash")   # => "gemini-2.5-flash"
-Models.resolve("default") # => "gemini-2.5-pro"
-Models.resolve("fast")    # => "gemini-2.5-flash"
+Models.resolve("pro")     # => "pro"
+Models.resolve("flash")   # => "flash"
+Models.resolve("default") # => "auto-gemini-3"
+Models.resolve("fast")    # => "gemini-3.1-flash-lite-preview"
 
-# Unknown names pass through unchanged
-Models.resolve("gemini-3-pro-preview")
-# => "gemini-3-pro-preview"
+# Known concrete names pass through unchanged after validation
+Models.resolve("gemini-3.1-pro-preview")
+# => "gemini-3.1-pro-preview"
 ```
 
-## Using Custom Models
+## Using Preview Models
 
-The SDK does not restrict you to known models. Any non-empty string is accepted:
+The SDK validates raw model values through `cli_subprocess_core`. Add new
+models to the shared core registry before using them here.
 
 ```elixir
-# Use a preview model or any future model
+# Use a preview model that is present in the shared core registry
 opts = %GeminiCliSdk.Options{model: "gemini-3-flash-preview"}
 {:ok, response} = GeminiCliSdk.run("Hello", opts)
 ```
 
-This means you can use new models as soon as the Gemini CLI supports them,
-without waiting for an SDK update.
-
 ## Validation
 
 ```elixir
-Models.validate("gemini-2.5-pro")  # => :ok
-Models.validate(nil)                # => :ok (uses CLI default)
-Models.validate("")                 # => {:error, "Invalid model: ..."}
-Models.validate(123)                # => {:error, "Invalid model: ..."}
+Models.validate("gemini-3.1-flash-lite-preview") # => :ok
+Models.validate("auto-gemini-3")                 # => :ok
+Models.validate(nil)                             # => :ok (uses CLI default)
+Models.validate("")                              # => {:error, "Invalid model: ..."}
+Models.validate(123)                             # => {:error, "Invalid model: ..."}
 ```
 
 ## Checking Known Models
 
 ```elixir
-Models.known?("gemini-2.5-pro")   # => true
-Models.known?("flash")             # => true (it's an alias)
-Models.known?("custom-model")      # => false
+Models.known?("gemini-3.1-flash-lite-preview") # => true
+Models.known?("flash")                         # => true
+Models.known?("custom-model")                  # => false
 ```
 
 ## Runtime Configuration
 
-Override the default models via Application config without modifying SDK code:
+`Models.default_model/0` and `Models.fast_model/0` read from the shared core
+registry. Application config is only a fallback if that registry is unavailable:
 
 ```elixir
 # config/config.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-3-pro-preview",
-  fast_model: "gemini-2.5-flash-lite"
+  default_model: "auto-gemini-3",
+  fast_model: "gemini-3.1-flash-lite-preview"
 ```
 
 After this configuration:
 
 ```elixir
-Models.default_model()  # => "gemini-3-pro-preview"
-Models.fast_model()     # => "gemini-2.5-flash-lite"
+Models.default_model()  # => "auto-gemini-3"
+Models.fast_model()     # => "gemini-3.1-flash-lite-preview"
 ```
 
 ## Per-Environment Configuration
@@ -116,11 +127,11 @@ Models.fast_model()     # => "gemini-2.5-flash-lite"
 ```elixir
 # config/dev.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-2.5-flash"  # Use cheaper model in development
+  default_model: "auto-gemini-2.5"
 
 # config/prod.exs
 config :gemini_cli_sdk,
-  default_model: "gemini-2.5-pro"    # Use most capable in production
+  default_model: "auto-gemini-3"
 ```
 
 ## Best Practices

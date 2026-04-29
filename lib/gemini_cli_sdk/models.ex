@@ -3,40 +3,38 @@ defmodule GeminiCliSdk.Models do
   Centralized model name constants and helpers.
 
   All model references throughout the SDK flow through this module.
-  Override defaults via Application configuration:
+  If the shared core registry is unavailable, fallback defaults can be supplied
+  via Application configuration:
 
       # config/config.exs
       config :gemini_cli_sdk,
-        default_model: "gemini-2.5-pro",
-        fast_model: "gemini-2.5-flash"
+        default_model: "auto-gemini-3",
+        fast_model: "gemini-3.1-flash-lite-preview"
 
   ## Built-in Models
 
   | Function | Default | Description |
   |----------|---------|-------------|
-  | `default_model/0` | `"gemini-2.5-pro"` | Most capable model |
-  | `fast_model/0` | `"gemini-2.5-flash"` | Optimized for speed |
+  | `default_model/0` | `"auto-gemini-3"` | Gemini CLI automatic Gemini 3 routing |
+  | `fast_model/0` | `"gemini-3.1-flash-lite-preview"` | Optimized for speed |
 
   ## Aliases
 
-  Short aliases expand to full model names via `resolve/1`:
+  Local convenience aliases expand through `resolve/1`. Gemini CLI aliases
+  such as `"pro"` and `"flash"` are validated and passed through unchanged:
 
   | Alias | Resolves To |
   |-------|-------------|
-  | `"pro"` | `default_model()` |
   | `"default"` | `default_model()` |
-  | `"flash"` | `fast_model()` |
   | `"fast"` | `fast_model()` |
   """
 
   alias CliSubprocessCore.ModelRegistry
 
-  @default_model "gemini-2.5-pro"
-  @fast_model "gemini-2.5-flash"
+  @default_model "auto-gemini-3"
+  @fast_model "gemini-3.1-flash-lite-preview"
 
   @aliases %{
-    "pro" => @default_model,
-    "flash" => @fast_model,
     "default" => @default_model,
     "fast" => @fast_model
   }
@@ -53,32 +51,35 @@ defmodule GeminiCliSdk.Models do
   @doc "Returns the fast model name, optimized for speed."
   @spec fast_model() :: String.t()
   def fast_model do
-    resolve("flash")
+    resolve("fast")
   end
 
   @doc "Returns a list of all built-in model identifiers."
   @spec available_models() :: [String.t()]
   def available_models do
-    [default_model(), fast_model()]
-    |> Enum.uniq()
+    case ModelRegistry.list_visible(:gemini, visibility: :all) do
+      {:ok, models} -> models
+      {:error, _reason} -> [default_model(), fast_model()] |> Enum.uniq()
+    end
   end
 
   @doc """
   Resolves a model name, expanding aliases.
 
-  Accepts full model names as-is, or aliases like `"pro"`, `"flash"`,
-  `"default"`, `"fast"`.
+  Accepts full model names as-is, Gemini CLI virtual models like
+  `"auto-gemini-3"`, and local convenience aliases like `"default"` and
+  `"fast"`.
 
   ## Examples
 
       iex> GeminiCliSdk.Models.resolve("pro")
-      "gemini-2.5-pro"
+      "pro"
 
-      iex> GeminiCliSdk.Models.resolve("gemini-2.5-flash")
-      "gemini-2.5-flash"
+      iex> GeminiCliSdk.Models.resolve("gemini-3.1-flash-lite-preview")
+      "gemini-3.1-flash-lite-preview"
 
-      iex> GeminiCliSdk.Models.resolve("custom-model")
-      "custom-model"
+      iex> GeminiCliSdk.Models.resolve("auto-gemini-3")
+      "auto-gemini-3"
   """
   @spec resolve(String.t()) :: String.t()
   def resolve(name) when is_binary(name) do
@@ -91,12 +92,12 @@ defmodule GeminiCliSdk.Models do
   @doc """
   Validates a model value.
 
-  Accepts any non-empty binary string or `nil` (meaning use CLI default).
-  Does not restrict to known models -- new models work without SDK updates.
+  Accepts `nil` (meaning use CLI default) or a model known to the shared core
+  registry. Unknown strings are rejected before the CLI is started.
 
   ## Examples
 
-      iex> GeminiCliSdk.Models.validate("gemini-2.5-pro")
+      iex> GeminiCliSdk.Models.validate("gemini-3.1-flash-lite-preview")
       :ok
 
       iex> GeminiCliSdk.Models.validate(nil)
@@ -118,6 +119,11 @@ defmodule GeminiCliSdk.Models do
   @doc "Returns `true` if the model name is a known built-in model or alias."
   @spec known?(String.t()) :: boolean()
   def known?(model) when is_binary(model) do
-    model in available_models() or Map.has_key?(@aliases, model)
+    model = Map.get(@aliases, model, model)
+
+    case ModelRegistry.validate(:gemini, model) do
+      {:ok, _model} -> true
+      {:error, _reason} -> false
+    end
   end
 end
