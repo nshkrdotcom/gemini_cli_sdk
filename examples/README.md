@@ -11,6 +11,7 @@ Run a single example:
 
 ```bash
 mix run examples/simple_prompt.exs
+mix run examples/simple_prompt.exs -- --cli-command /opt/gemini/bin/gemini
 mix run examples/simple_prompt.exs -- --ssh-host example.internal
 mix run examples/simple_prompt.exs -- --ssh-host example.internal --danger-full-access
 ```
@@ -34,6 +35,7 @@ bash examples/run_all.sh session_management --ssh-host builder@example.internal 
 
 Every example in this directory accepts the same optional SSH transport flags:
 
+- `--cli-command <command-or-path>` uses an explicit Gemini CLI command
 - `--cwd <path>` passes an explicit working directory to the example
 - `--danger-full-access` maps the example to the Gemini permissive runtime posture
 - `--ssh-host <host>` switches the example to `execution_surface: :ssh_exec`

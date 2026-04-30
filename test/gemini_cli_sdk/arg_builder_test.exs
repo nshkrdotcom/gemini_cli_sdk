@@ -72,6 +72,16 @@ defmodule GeminiCliSdk.ArgBuilderTest do
       refute "--sandbox" in args
     end
 
+    test "includes --skip-trust when true" do
+      args = ArgBuilder.build_args(%Options{skip_trust: true})
+      assert "--skip-trust" in args
+    end
+
+    test "omits --skip-trust when false" do
+      args = ArgBuilder.build_args(%Options{skip_trust: false})
+      refute "--skip-trust" in args
+    end
+
     test "includes --resume with no value for true" do
       args = ArgBuilder.build_args(%Options{resume: true})
       assert "--resume" in args

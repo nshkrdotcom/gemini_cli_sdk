@@ -6,274 +6,81 @@ defmodule GeminiCliSdk.CLITest do
   alias GeminiCliSdk.Error
   alias GeminiCliSdk.TestSupport
 
-  # Helper: env that disables all auto-resolution except what the test controls
-  defp isolated_env(overrides \\ %{}) do
-    Map.merge(
-      %{
-        "GEMINI_CLI_PATH" => nil,
-        "PATH" => "/nonexistent_dir_only",
-        "GEMINI_NO_NPX" => "1"
-      },
-      overrides
-    )
-  end
-
-  describe "resolve/0 — GEMINI_CLI_PATH" do
-    test "finds gemini via GEMINI_CLI_PATH env var" do
+  describe "resolve/1 explicit command" do
+    test "finds an explicit executable path" do
       dir = TestSupport.tmp_dir!("gemini_cli")
-      gemini_path = TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
+      gemini_path = TestSupport.write_cli_stub!(dir)
 
       try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => gemini_path}, fn ->
-          assert {:ok, %CommandSpec{program: ^gemini_path}} = CLI.resolve()
-        end)
+        assert {:ok, %CommandSpec{program: ^gemini_path}} =
+                 CLI.resolve(cli_command: gemini_path)
       after
         File.rm_rf(dir)
       end
     end
 
-    test "returns error for nonexistent GEMINI_CLI_PATH" do
-      TestSupport.with_env(
-        %{"GEMINI_CLI_PATH" => "/nonexistent/gemini"},
-        fn ->
-          assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-        end
-      )
+    test "accepts an explicit command name" do
+      assert {:ok, %CommandSpec{program: "gemini"}} = CLI.resolve(cli_command: "gemini")
     end
 
-    test "returns error for non-executable GEMINI_CLI_PATH" do
+    test "returns an error for a missing explicit executable path" do
+      missing_path = Path.join(TestSupport.tmp_dir!("gemini_missing_cli"), "missing-gemini")
+
+      assert {:error, %Error{kind: :cli_not_found} = error} =
+               CLI.resolve(cli_command: missing_path)
+
+      assert error.message =~ "missing-gemini"
+    end
+
+    test "returns an error for a non-executable explicit path" do
       dir = TestSupport.tmp_dir!("gemini_cli_non_exec")
       non_exec = TestSupport.write_file!(dir, "gemini", "echo hi\n")
 
       try do
-        TestSupport.with_env(
-          %{"GEMINI_CLI_PATH" => non_exec},
-          fn ->
-            assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-          end
-        )
+        assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve(cli_command: non_exec)
       after
         File.rm_rf(dir)
       end
     end
   end
 
-  describe "resolve/0 — PATH lookup" do
-    test "finds gemini in PATH when GEMINI_CLI_PATH is not set" do
-      dir = TestSupport.tmp_dir!("gemini_cli_path")
-      TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
-      path = dir <> ":" <> (System.get_env("PATH") || "")
+  describe "resolve/1 execution surfaces" do
+    test "remote execution surfaces use the remote provider command by default" do
+      assert {:ok, %CommandSpec{program: "gemini", argv_prefix: []}} =
+               CLI.resolve(
+                 surface_kind: :ssh_exec,
+                 transport_options: [destination: "gemini.example"]
+               )
+    end
 
-      try do
-        TestSupport.with_env(
-          %{"GEMINI_CLI_PATH" => nil, "PATH" => path},
-          fn ->
-            assert {:ok, %CommandSpec{}} = CLI.resolve()
-          end
-        )
-      after
-        File.rm_rf(dir)
-      end
+    test "explicit commands override the remote provider command when supplied" do
+      assert {:ok, %CommandSpec{program: "/opt/gemini/bin/gemini", argv_prefix: []}} =
+               CLI.resolve(
+                 execution_surface: [
+                   surface_kind: :ssh_exec,
+                   transport_options: [destination: "gemini.example"]
+                 ],
+                 cli_command: "/opt/gemini/bin/gemini"
+               )
     end
   end
 
-  describe "resolve/0 — npm global bin" do
-    test "finds gemini in npm global prefix bin directory" do
-      # Create a fake npm that reports our temp dir as its global prefix
-      dir = TestSupport.tmp_dir!("gemini_npm_global")
-      npm_dir = TestSupport.tmp_dir!("gemini_npm_bin")
-      prefix_dir = TestSupport.tmp_dir!("gemini_prefix")
-
-      # Create gemini binary in prefix/bin/
-      bin_dir = Path.join(prefix_dir, "bin")
-      File.mkdir_p!(bin_dir)
-      TestSupport.write_executable!(bin_dir, "gemini", "#!/bin/bash\nexit 0\n")
-
-      # Create a fake npm that reports the prefix
-      TestSupport.write_executable!(
-        npm_dir,
-        "npm",
-        "#!/bin/bash\necho '#{prefix_dir}'\n"
-      )
-
-      path = npm_dir <> ":/nonexistent_dir_only"
-
-      try do
-        TestSupport.with_env(
-          isolated_env(%{"PATH" => path}),
-          fn ->
-            assert {:ok, %CommandSpec{program: program}} = CLI.resolve()
-            assert program == Path.join(bin_dir, "gemini")
-          end
-        )
-      after
-        File.rm_rf(dir)
-        File.rm_rf(npm_dir)
-        File.rm_rf(prefix_dir)
-      end
-    end
-
-    test "skips npm global when gemini not in prefix bin" do
-      npm_dir = TestSupport.tmp_dir!("gemini_npm_nobin")
-      prefix_dir = TestSupport.tmp_dir!("gemini_prefix_empty")
-
-      TestSupport.write_executable!(
-        npm_dir,
-        "npm",
-        "#!/bin/bash\necho '#{prefix_dir}'\n"
-      )
-
-      path = npm_dir <> ":/nonexistent_dir_only"
-
-      try do
-        TestSupport.with_env(
-          isolated_env(%{"PATH" => path}),
-          fn ->
-            assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-          end
-        )
-      after
-        File.rm_rf(npm_dir)
-        File.rm_rf(prefix_dir)
-      end
-    end
-  end
-
-  describe "resolve/0 — npx fallback" do
-    test "falls back to npx when gemini is not on PATH or in npm global" do
-      npx_dir = TestSupport.tmp_dir!("gemini_npx")
-      npx_path = TestSupport.write_executable!(npx_dir, "npx", "#!/bin/bash\nexit 0\n")
-      path = npx_dir <> ":/nonexistent_dir_only"
-
-      try do
-        TestSupport.with_env(
-          %{
-            "GEMINI_CLI_PATH" => nil,
-            "PATH" => path,
-            "GEMINI_NO_NPX" => nil
-          },
-          fn ->
-            assert {:ok,
-                    %CommandSpec{
-                      program: ^npx_path,
-                      argv_prefix: ["--yes", "--package", "@google/gemini-cli", "gemini"]
-                    }} = CLI.resolve()
-          end
-        )
-      after
-        File.rm_rf(npx_dir)
-      end
-    end
-
-    test "npx fallback is disabled when GEMINI_NO_NPX=1" do
-      npx_dir = TestSupport.tmp_dir!("gemini_npx_disabled")
-      TestSupport.write_executable!(npx_dir, "npx", "#!/bin/bash\nexit 0\n")
-      path = npx_dir <> ":/nonexistent_dir_only"
-
-      try do
-        TestSupport.with_env(
-          %{
-            "GEMINI_CLI_PATH" => nil,
-            "PATH" => path,
-            "GEMINI_NO_NPX" => "1"
-          },
-          fn ->
-            assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-          end
-        )
-      after
-        File.rm_rf(npx_dir)
-      end
-    end
-
-    test "npx fallback is disabled when GEMINI_NO_NPX=true" do
-      npx_dir = TestSupport.tmp_dir!("gemini_npx_disabled_true")
-      TestSupport.write_executable!(npx_dir, "npx", "#!/bin/bash\nexit 0\n")
-      path = npx_dir <> ":/nonexistent_dir_only"
-
-      try do
-        TestSupport.with_env(
-          %{
-            "GEMINI_CLI_PATH" => nil,
-            "PATH" => path,
-            "GEMINI_NO_NPX" => "true"
-          },
-          fn ->
-            assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-          end
-        )
-      after
-        File.rm_rf(npx_dir)
-      end
-    end
-  end
-
-  describe "resolve/0 — nothing found" do
-    test "returns error when gemini is not anywhere" do
-      TestSupport.with_env(
-        isolated_env(),
-        fn ->
-          assert {:error, %Error{kind: :cli_not_found}} = CLI.resolve()
-        end
-      )
-    end
-
-    test "remote execution surfaces fall back to the remote provider command instead of local GEMINI_CLI_PATH" do
-      dir = TestSupport.tmp_dir!("gemini_cli_remote_surface")
-      gemini_path = TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
-
-      try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => gemini_path}, fn ->
-          assert {:ok, %CommandSpec{program: "gemini", argv_prefix: []}} =
-                   CLI.resolve(
-                     surface_kind: :ssh_exec,
-                     transport_options: [destination: "gemini.example"]
-                   )
-        end)
-      after
-        File.rm_rf(dir)
-      end
-    end
-  end
-
-  describe "resolve!/0" do
-    test "returns core CommandSpec when found" do
+  describe "resolve!/1" do
+    test "returns core CommandSpec for an explicit executable" do
       dir = TestSupport.tmp_dir!("gemini_cli_resolve_bang")
-      gemini_path = TestSupport.write_executable!(dir, "gemini", "#!/bin/bash\nexit 0\n")
+      gemini_path = TestSupport.write_cli_stub!(dir)
 
       try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => gemini_path}, fn ->
-          assert %CommandSpec{program: ^gemini_path} = CLI.resolve!()
-        end)
+        assert %CommandSpec{program: ^gemini_path} = CLI.resolve!(cli_command: gemini_path)
       after
         File.rm_rf(dir)
       end
     end
 
-    test "raises when no CLI can be found" do
-      TestSupport.with_env(
-        isolated_env(%{"GEMINI_CLI_PATH" => "/nonexistent/gemini"}),
-        fn ->
-          assert_raise Error, fn -> CLI.resolve!() end
-        end
-      )
-    end
-  end
-
-  describe "command_args/2" do
-    test "prepends argv_prefix to args (npx-style)" do
-      spec = %CommandSpec{
-        program: "/usr/bin/npx",
-        argv_prefix: ["--yes", "--package", "@google/gemini-cli", "gemini"]
-      }
-
-      assert ["--yes", "--package", "@google/gemini-cli", "gemini", "--version"] =
-               CLI.command_args(spec, ["--version"])
-    end
-
-    test "returns args unchanged when no prefix" do
-      spec = %CommandSpec{program: "/usr/bin/gemini", argv_prefix: []}
-      assert ["--version"] = CLI.command_args(spec, ["--version"])
+    test "raises when explicit executable cannot be found" do
+      assert_raise Error, fn ->
+        CLI.resolve!(cli_command: "/nonexistent/gemini")
+      end
     end
   end
 end

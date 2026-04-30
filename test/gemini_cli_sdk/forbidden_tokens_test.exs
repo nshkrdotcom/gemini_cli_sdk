@@ -7,6 +7,20 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
     "ExternalRuntimeTransport",
     "external_runtime_transport"
   ]
+  @os_env_api_tokens [
+    Enum.join(["System", "get_env"], "."),
+    Enum.join(["System", "put_env"], "."),
+    Enum.join(["System", "delete_env"], ".")
+  ]
+  @sdk_env_var_tokens [
+    Enum.join(["GEMINI", "CLI_PATH"], "_"),
+    Enum.join(["GEMINI", "NO_NPX"], "_"),
+    Enum.join(["GEMINI", "MODEL"], "_"),
+    Enum.join(["GEMINI", "CLI_SDK_VERSION"], "_"),
+    Enum.join(["GEMINI", "SYSTEM_MD"], "_"),
+    Enum.join(["GEMINI", "CLI_SYSTEM_SETTINGS_PATH"], "_"),
+    Enum.join(["GOOGLE", ""], "_")
+  ]
   @stale_runtime_owner_tokens [
     "ExternalRuntimeTransport.Transport internals",
     Enum.join([
@@ -21,6 +35,13 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
     "mix.lock",
     "README.md",
     "guides"
+  ]
+  @no_env_paths [
+    "lib",
+    "test",
+    "README.md",
+    "guides",
+    "examples"
   ]
   @legacy_backend_paths [
     "lib",
@@ -60,6 +81,32 @@ defmodule GeminiCliSdk.ForbiddenTokensTest do
         Enum.each(@forbidden_tokens, fn token ->
           refute contents =~ token,
                  "unexpected forbidden token #{inspect(token)} in #{Path.relative_to(path, @project_root)}"
+        end)
+      end
+    end)
+  end
+
+  test "SDK-owned code does not read or mutate OS environment variables" do
+    Enum.each(expanded_files(@no_env_paths), fn path ->
+      if path != __ENV__.file do
+        contents = File.read!(path)
+
+        Enum.each(@os_env_api_tokens, fn token ->
+          refute contents =~ token,
+                 "unexpected OS environment API #{inspect(token)} in #{Path.relative_to(path, @project_root)}"
+        end)
+      end
+    end)
+  end
+
+  test "SDK-owned code and docs do not expose SDK env-var controls" do
+    Enum.each(expanded_files(@no_env_paths), fn path ->
+      if path != __ENV__.file do
+        contents = File.read!(path)
+
+        Enum.each(@sdk_env_var_tokens, fn token ->
+          refute contents =~ token,
+                 "unexpected SDK environment variable token #{inspect(token)} in #{Path.relative_to(path, @project_root)}"
         end)
       end
     end)

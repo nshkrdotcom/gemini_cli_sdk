@@ -16,6 +16,8 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
              ExamplesSupport.parse_argv([
                "--cwd",
                "/srv/gemini",
+               "--cli-command",
+               "/opt/gemini",
                "--danger-full-access",
                "--ssh-host",
                "builder@example.internal",
@@ -34,6 +36,7 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
     assert context.execution_surface.transport_options[:ssh_user] == "builder"
     assert context.execution_surface.transport_options[:port] == 2222
     assert context.execution_surface.transport_options[:identity_file] =~ "/tmp/id_ed25519"
+    assert context.cli_command == "/opt/gemini"
     assert context.example_cwd == "/srv/gemini"
     assert context.example_danger_full_access == true
   end
@@ -53,6 +56,8 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
              ExamplesSupport.parse_argv([
                "--cwd",
                "/srv/gemini",
+               "--cli-command",
+               "/opt/gemini",
                "--danger-full-access",
                "--ssh-host",
                "example.internal"
@@ -66,6 +71,7 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
 
     assert opts.execution_surface.surface_kind == :ssh_exec
     assert opts.execution_surface.transport_options[:destination] == "example.internal"
+    assert opts.cli_command == "/opt/gemini"
     assert opts.cwd == "/srv/gemini"
     assert opts.approval_mode == :yolo
     assert opts.yolo == false
@@ -79,6 +85,8 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
              ExamplesSupport.parse_argv([
                "--cwd",
                "/srv/gemini",
+               "--cli-command",
+               "/opt/gemini",
                "--danger-full-access",
                "--ssh-host",
                "example.internal"
@@ -89,6 +97,7 @@ defmodule GeminiCliSdk.ExamplesSupportTest do
     opts = ExamplesSupport.command_opts([])
 
     assert opts[:execution_surface].surface_kind == :ssh_exec
+    assert opts[:cli_command] == "/opt/gemini"
     assert opts[:cwd] == "/srv/gemini"
     assert opts[:approval_mode] == :yolo
     assert opts[:yolo] == false

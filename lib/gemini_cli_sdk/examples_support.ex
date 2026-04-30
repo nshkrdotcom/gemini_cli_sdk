@@ -9,6 +9,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
     @enforce_keys [:argv]
     defstruct argv: [],
               execution_surface: nil,
+              cli_command: nil,
               example_cwd: nil,
               example_danger_full_access: false,
               ssh_host: nil,
@@ -19,6 +20,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
     @type t :: %__MODULE__{
             argv: [String.t()],
             execution_surface: ExecutionSurface.t() | nil,
+            cli_command: String.t() | nil,
             example_cwd: String.t() | nil,
             example_danger_full_access: boolean(),
             ssh_host: String.t() | nil,
@@ -31,6 +33,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
   @context_key {__MODULE__, :ssh_context}
   @ssh_switches [
     cwd: :string,
+    cli_command: :string,
     danger_full_access: :boolean,
     ssh_host: :string,
     ssh_identity_file: :string,
@@ -92,6 +95,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
   def with_execution_surface(options) when is_map(options) do
     options
     |> maybe_put_execution_surface()
+    |> maybe_put_cli_command()
     |> maybe_put_example_cwd()
     |> maybe_put_danger_full_access()
   end
@@ -100,6 +104,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
   def command_opts(opts \\ []) when is_list(opts) do
     opts
     |> maybe_put_command_execution_surface()
+    |> maybe_put_command_cli_command()
     |> maybe_put_command_cwd()
     |> maybe_put_command_danger_full_access()
   end
@@ -112,6 +117,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
 
   defp build_context(parsed, argv) do
     example_cwd = Keyword.get(parsed, :cwd)
+    cli_command = Keyword.get(parsed, :cli_command)
     example_danger_full_access = Keyword.get(parsed, :danger_full_access, false)
     ssh_host = Keyword.get(parsed, :ssh_host)
     ssh_user = Keyword.get(parsed, :ssh_user)
@@ -125,10 +131,14 @@ defmodule GeminiCliSdk.ExamplesSupport do
       invalid_example_cwd?(example_cwd) ->
         {:error, "--cwd must be a non-empty path"}
 
+      invalid_cli_command?(cli_command) ->
+        {:error, "--cli-command must be a non-empty command or path"}
+
       is_nil(ssh_host) ->
         {:ok,
          %SSHContext{
            argv: argv,
+           cli_command: normalize_cli_command(cli_command),
            example_cwd: normalize_example_cwd(example_cwd),
            example_danger_full_access: example_danger_full_access
          }}
@@ -151,6 +161,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
            %SSHContext{
              argv: argv,
              execution_surface: execution_surface,
+             cli_command: normalize_cli_command(cli_command),
              example_cwd: normalize_example_cwd(example_cwd),
              example_danger_full_access: example_danger_full_access,
              ssh_host: destination,
@@ -230,7 +241,7 @@ defmodule GeminiCliSdk.ExamplesSupport do
         {name, value} -> "--#{name}=#{value}"
       end)
 
-    "invalid example flags: #{rendered}. Supported flags: --cwd, --danger-full-access, --ssh-host, --ssh-user, --ssh-port, --ssh-identity-file"
+    "invalid example flags: #{rendered}. Supported flags: --cwd, --cli-command, --danger-full-access, --ssh-host, --ssh-user, --ssh-port, --ssh-identity-file"
   end
 
   defp maybe_put(opts, _key, nil), do: opts
@@ -246,6 +257,13 @@ defmodule GeminiCliSdk.ExamplesSupport do
   defp maybe_put_example_cwd(options) when is_map(options) do
     case normalize_example_cwd(context().example_cwd) do
       cwd when is_binary(cwd) -> Map.put(options, :cwd, cwd)
+      _ -> options
+    end
+  end
+
+  defp maybe_put_cli_command(options) when is_map(options) do
+    case context().cli_command do
+      command when is_binary(command) -> Map.put(options, :cli_command, command)
       _ -> options
     end
   end
@@ -275,6 +293,13 @@ defmodule GeminiCliSdk.ExamplesSupport do
     end
   end
 
+  defp maybe_put_command_cli_command(opts) when is_list(opts) do
+    case context().cli_command do
+      command when is_binary(command) -> Keyword.put(opts, :cli_command, command)
+      _ -> opts
+    end
+  end
+
   defp maybe_put_command_danger_full_access(opts) when is_list(opts) do
     if danger_full_access?() do
       opts
@@ -289,6 +314,12 @@ defmodule GeminiCliSdk.ExamplesSupport do
   defp invalid_example_cwd?(nil), do: false
   defp invalid_example_cwd?(path) when is_binary(path), do: String.trim(path) == ""
 
+  defp invalid_cli_command?(nil), do: false
+  defp invalid_cli_command?(command) when is_binary(command), do: String.trim(command) == ""
+
   defp normalize_example_cwd(nil), do: nil
   defp normalize_example_cwd(path) when is_binary(path), do: String.trim(path)
+
+  defp normalize_cli_command(nil), do: nil
+  defp normalize_cli_command(command) when is_binary(command), do: String.trim(command)
 end

@@ -6,12 +6,13 @@ defmodule GeminiCliSdk.ArgBuilder do
   @spec build_args(Options.t(), String.t() | nil) :: [String.t()]
   def build_args(%Options{} = opts, prompt \\ nil) do
     []
-    |> add_prompt_flag(prompt)
+    |> add_prompt_flag(effective_prompt(opts, prompt))
     |> add_output_format(opts)
     |> add_model(opts)
     |> add_approval_mode(opts)
     |> add_yolo(opts)
     |> add_sandbox(opts)
+    |> add_skip_trust(opts)
     |> add_resume(opts)
     |> add_extensions(opts)
     |> add_include_directories(opts)
@@ -22,6 +23,17 @@ defmodule GeminiCliSdk.ArgBuilder do
 
   defp add_prompt_flag(args, nil), do: args
   defp add_prompt_flag(args, prompt), do: args ++ ["--prompt", prompt]
+
+  defp effective_prompt(%Options{system_prompt: nil}, prompt), do: prompt
+  defp effective_prompt(%Options{system_prompt: ""}, prompt), do: prompt
+
+  defp effective_prompt(%Options{system_prompt: system_prompt}, nil)
+       when is_binary(system_prompt),
+       do: system_prompt
+
+  defp effective_prompt(%Options{system_prompt: system_prompt}, prompt)
+       when is_binary(system_prompt) and is_binary(prompt),
+       do: system_prompt <> "\n\n" <> prompt
 
   defp add_output_format(args, %Options{output_format: fmt}) when is_binary(fmt) do
     args ++ ["--output-format", fmt]
@@ -47,6 +59,9 @@ defmodule GeminiCliSdk.ArgBuilder do
 
   defp add_sandbox(args, %Options{sandbox: true}), do: args ++ ["--sandbox"]
   defp add_sandbox(args, _opts), do: args
+
+  defp add_skip_trust(args, %Options{skip_trust: true}), do: args ++ ["--skip-trust"]
+  defp add_skip_trust(args, _opts), do: args
 
   defp add_resume(args, %Options{resume: nil}), do: args
   defp add_resume(args, %Options{resume: true}), do: args ++ ["--resume"]

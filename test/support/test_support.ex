@@ -1,8 +1,6 @@
 defmodule GeminiCliSdk.TestSupport do
   @moduledoc false
 
-  @global_state_lock {:gemini_cli_sdk_test, :global_state}
-
   @doc """
   Creates a unique temporary directory. Returns the absolute path.
   Caller is responsible for cleanup via `File.rm_rf/1`.
@@ -33,27 +31,40 @@ defmodule GeminiCliSdk.TestSupport do
   end
 
   @doc """
-  Temporarily sets environment variables, runs the function, then restores
-  the original values.
+  Writes a deterministic Gemini CLI test double.
+
+  The generated script is configured entirely through literal paths and values
+  embedded at creation time. It does not read test-control environment
+  variables.
   """
-  def with_env(env, fun) when is_function(fun, 0) do
-    :global.trans(@global_state_lock, fn ->
-      saved = Enum.map(env, fn {k, _} -> {k, System.get_env(k)} end)
+  def write_cli_stub!(dir, opts \\ []) do
+    name = Keyword.get(opts, :name, "gemini")
+    args_file = Keyword.get(opts, :args_file)
+    stdin_file = Keyword.get(opts, :stdin_file)
+    pid_file = Keyword.get(opts, :pid_file)
+    stream_file = Keyword.get(opts, :stream_file)
+    output_file = Keyword.get(opts, :output_file)
+    output = Keyword.get(opts, :output)
+    stderr = Keyword.get(opts, :stderr)
+    exit_code = Keyword.get(opts, :exit_code, 0)
+    block? = Keyword.get(opts, :block?, false)
 
-      Enum.each(env, fn
-        {k, nil} -> System.delete_env(k)
-        {k, v} -> System.put_env(k, v)
-      end)
+    script = """
+    #!/bin/sh
+    set -eu
+    #{write_pid(pid_file)}
+    #{write_args(args_file)}
+    #{write_stdin(stdin_file)}
+    #{maybe_block(block?)}
+    #{write_stderr(stderr)}
+    exit_code=#{exit_code}
+    #{write_stream(stream_file)}
+    #{write_output_file(output_file)}
+    #{write_output(output)}
+    exit "$exit_code"
+    """
 
-      try do
-        fun.()
-      after
-        Enum.each(saved, fn
-          {k, nil} -> System.delete_env(k)
-          {k, v} -> System.put_env(k, v)
-        end)
-      end
-    end)
+    write_executable!(dir, name, script)
   end
 
   @doc """
@@ -109,5 +120,49 @@ defmodule GeminiCliSdk.TestSupport do
   def kill_os_process(pid) when is_integer(pid) do
     _ = System.cmd("kill", ["-9", Integer.to_string(pid)], stderr_to_stdout: true)
     :ok
+  end
+
+  defp write_pid(nil), do: ""
+  defp write_pid(path), do: "printf '%s\\n' $$ > #{shell_quote(path)}"
+
+  defp write_args(nil), do: ""
+  defp write_args(path), do: "printf '%s\\n' \"$@\" > #{shell_quote(path)}"
+
+  defp write_stdin(nil), do: "cat > /dev/null || true"
+  defp write_stdin(path), do: "cat > #{shell_quote(path)}"
+
+  defp maybe_block(false), do: ""
+  defp maybe_block(true), do: "tail -f /dev/null"
+
+  defp write_stderr(nil), do: ""
+  defp write_stderr(text), do: "printf '%s\\n' #{shell_quote(text)} >&2"
+
+  defp write_stream(nil), do: ""
+
+  defp write_stream(path) do
+    """
+    if [ -f #{shell_quote(path)} ]; then
+      cat #{shell_quote(path)}
+      exit "$exit_code"
+    fi
+    """
+  end
+
+  defp write_output_file(nil), do: ""
+
+  defp write_output_file(path) do
+    """
+    if [ -f #{shell_quote(path)} ]; then
+      cat #{shell_quote(path)}
+      exit "$exit_code"
+    fi
+    """
+  end
+
+  defp write_output(nil), do: ""
+  defp write_output(text), do: "printf '%s\\n' #{shell_quote(text)}"
+
+  defp shell_quote(value) do
+    "'" <> String.replace(to_string(value), "'", "'\"'\"'") <> "'"
   end
 end

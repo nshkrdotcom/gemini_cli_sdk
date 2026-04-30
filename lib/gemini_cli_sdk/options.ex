@@ -2,8 +2,8 @@ defmodule GeminiCliSdk.Options do
   @moduledoc """
   Configuration for a Gemini CLI invocation.
 
-  Every field maps to a specific CLI flag, environment variable, or subprocess
-  setting. Fields with `nil` default are omitted from the generated argument list.
+  Every field maps to a specific CLI flag or subprocess setting. Fields with
+  `nil` default are omitted from the generated argument list.
   """
 
   alias CliSubprocessCore.{ExecutionSurface, ModelInput}
@@ -19,9 +19,11 @@ defmodule GeminiCliSdk.Options do
           execution_surface: ExecutionSurface.t(),
           model_payload: CliSubprocessCore.ModelRegistry.selection() | nil,
           model: String.t() | nil,
+          cli_command: String.t() | nil,
           yolo: boolean(),
           approval_mode: approval_mode() | nil,
           sandbox: boolean(),
+          skip_trust: boolean(),
           resume: resume_value(),
           extensions: [String.t()],
           include_directories: [String.t()],
@@ -30,7 +32,6 @@ defmodule GeminiCliSdk.Options do
           debug: boolean(),
           output_format: String.t(),
           cwd: String.t() | nil,
-          env: map(),
           settings: map() | nil,
           system_prompt: String.t() | nil,
           timeout_ms: pos_integer(),
@@ -40,9 +41,11 @@ defmodule GeminiCliSdk.Options do
   defstruct execution_surface: %ExecutionSurface{},
             model_payload: nil,
             model: nil,
+            cli_command: nil,
             yolo: false,
             approval_mode: nil,
             sandbox: false,
+            skip_trust: false,
             resume: nil,
             extensions: [],
             include_directories: [],
@@ -51,7 +54,6 @@ defmodule GeminiCliSdk.Options do
             debug: false,
             output_format: "stream-json",
             cwd: nil,
-            env: %{},
             settings: nil,
             system_prompt: nil,
             timeout_ms: @default_timeout_ms,
@@ -90,20 +92,7 @@ defmodule GeminiCliSdk.Options do
   defp validation_message(%{message: message}), do: message
 
   defp normalize_model_input!(%__MODULE__{} = opts) do
-    env_model =
-      if explicit_model_payload?(opts) do
-        nil
-      else
-        Map.get(opts.env, "GEMINI_MODEL") ||
-          Map.get(opts.env, :GEMINI_MODEL) ||
-          System.get_env("GEMINI_MODEL")
-      end
-
-    attrs =
-      Map.from_struct(opts)
-      |> maybe_put_env_model(env_model)
-
-    case ModelInput.normalize(:gemini, attrs) do
+    case ModelInput.normalize(:gemini, Map.from_struct(opts)) do
       {:ok, normalized} ->
         %{opts | model_payload: normalized.selection, model: normalized.selection.resolved_model}
 
@@ -111,12 +100,6 @@ defmodule GeminiCliSdk.Options do
         raise ArgumentError, "model resolution failed for :gemini: #{inspect(reason)}"
     end
   end
-
-  defp maybe_put_env_model(attrs, nil), do: attrs
-  defp maybe_put_env_model(attrs, value), do: Map.put(attrs, :env_model, value)
-
-  defp explicit_model_payload?(%__MODULE__{model_payload: payload}) when is_map(payload), do: true
-  defp explicit_model_payload?(_opts), do: false
 
   @doc false
   @spec normalize_execution_surface(term()) :: {:ok, ExecutionSurface.t()} | {:error, term()}

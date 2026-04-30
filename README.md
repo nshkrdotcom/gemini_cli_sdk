@@ -30,7 +30,7 @@ An Elixir SDK for the [Gemini CLI](https://github.com/google-gemini/gemini-cli) 
 - **Shared Core Runtime** -- Streaming and one-shot command execution now run on `cli_subprocess_core` while preserving Gemini-specific public types and entrypoints
 - **Subprocess Safety** -- Built on `cli_subprocess_core`, which now routes the covered local session lane through the `CliSubprocessCore` transport facade while keeping Gemini-facing types and cleanup semantics stable
 - **Typed Events** -- 6 event types (init, message, tool_use, tool_result, error, result) parsed from JSONL
-- **Full Options** -- Model selection, YOLO mode, sandboxing, extensions, tool restrictions, and more
+- **Full Options** -- Model selection, explicit CLI command paths, YOLO mode, sandboxing, extensions, settings profiles, and more
 - **OTP Integration** -- Application supervision tree with TaskSupervisor for async I/O
 
 ## Installation
@@ -76,6 +76,7 @@ IO.puts(response)
 opts = %GeminiCliSdk.Options{
   model: GeminiCliSdk.Models.fast_model(),
   yolo: true,
+  skip_trust: true,
   timeout_ms: 60_000
 }
 
@@ -165,8 +166,8 @@ Gemini CLI resolution, option shaping, and public result/error mapping remain in
 this repo above the shared core.
 
 No separate Gemini-owned common subprocess runtime remains here. Repo-local
-ownership is limited to Gemini CLI discovery, argument and environment shaping,
-and typed event/result projection above the shared core.
+ownership is limited to Gemini CLI discovery, argument shaping, settings
+profiles, and typed event/result projection above the shared core.
 
 The release and composition model is:
 
@@ -201,8 +202,7 @@ Gemini-side responsibility is limited to:
 - carrying the resolved `model_payload` on `GeminiCliSdk.Options`
 - projecting the resolved model for UX and metadata
 - rendering `--model` only when the resolved value is non-empty
-- treating repo-local env defaults as fallback inputs only when no explicit
-  payload was supplied
+- using the shared core registry default when no explicit model input was supplied
 
 No repo-local Gemini model fallback remains.
 
@@ -252,5 +252,6 @@ an existing CLI conversation instead of replaying prompts from scratch.
 - `GeminiCliSdk.Runtime.CLI.list_provider_sessions/1` projects those typed entries into the common
   runtime-neutral list shape used by higher layers
 
-The runtime also now carries `system_prompt` through the validated options surface so the caller can
-resume with the same instruction context it started with.
+The runtime also now carries `system_prompt` through the validated options
+surface as prompt preamble text so the caller can resume with the same
+instruction context it started with.

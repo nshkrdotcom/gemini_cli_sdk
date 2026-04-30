@@ -4,7 +4,8 @@ This guide covers strategies for testing code that uses GeminiCliSdk.
 
 ## Mock CLI Approach
 
-GeminiCliSdk resolves the CLI binary via the `GEMINI_CLI_PATH` environment variable. You can point this at a mock script for testing:
+Pass an explicit `cli_command` in `GeminiCliSdk.Options` so tests use a local
+stub instead of discovering a real `gemini` executable:
 
 ```elixir
 defmodule MyApp.GeminiTest do
@@ -15,7 +16,7 @@ defmodule MyApp.GeminiTest do
     File.mkdir_p!(dir)
 
     script = """
-    #!/usr/bin/env bash
+    #!/bin/sh
     cat > /dev/null
     echo '{"type":"init","session_id":"test","model":"test"}'
     echo '{"type":"message","role":"assistant","content":"Mock response","delta":true}'
@@ -32,23 +33,18 @@ defmodule MyApp.GeminiTest do
   end
 
   test "my feature uses Gemini", %{stub_path: stub_path} do
-    original = System.get_env("GEMINI_CLI_PATH")
-    System.put_env("GEMINI_CLI_PATH", stub_path)
+    opts = %GeminiCliSdk.Options{cli_command: stub_path}
 
-    try do
-      {:ok, result} = MyApp.ask_gemini("test question")
-      assert result =~ "Mock response"
-    after
-      if original, do: System.put_env("GEMINI_CLI_PATH", original),
-        else: System.delete_env("GEMINI_CLI_PATH")
-    end
+    {:ok, result} = MyApp.ask_gemini("test question", opts)
+    assert result =~ "Mock response"
   end
 end
 ```
 
 ## JSONL Fixtures
 
-For more realistic tests, create JSONL fixture files that mirror real CLI output:
+For more realistic tests, create JSONL fixture files that mirror real CLI
+output:
 
 ```json
 {"type":"init","timestamp":"2026-01-01T00:00:00Z","session_id":"test-001","model":"auto-gemini-3"}
@@ -57,14 +53,12 @@ For more realistic tests, create JSONL fixture files that mirror real CLI output
 {"type":"result","status":"success","stats":{"total_tokens":50,"input_tokens":10,"output_tokens":40,"duration_ms":500,"tool_calls":0},"timestamp":"2026-01-01T00:00:03Z"}
 ```
 
-Then serve them from your mock script:
+Then serve them from your mock script with a literal fixture path:
 
-```bash
-#!/usr/bin/env bash
+```sh
+#!/bin/sh
 cat > /dev/null
-while IFS= read -r line || [ -n "$line" ]; do
-  echo "$line"
-done < "$GEMINI_TEST_STREAM_FILE"
+cat "/absolute/path/to/simple_response.jsonl"
 ```
 
 The stream event parser preserves unknown fields in each event struct's `extra`
@@ -77,15 +71,16 @@ Consider wrapping GeminiCliSdk behind a behaviour for easier testing:
 
 ```elixir
 defmodule MyApp.AI do
-  @callback ask(String.t()) :: {:ok, String.t()} | {:error, term()}
+  @callback ask(String.t(), GeminiCliSdk.Options.t()) ::
+              {:ok, String.t()} | {:error, term()}
 end
 
 defmodule MyApp.AI.Gemini do
   @behaviour MyApp.AI
 
   @impl true
-  def ask(prompt) do
-    GeminiCliSdk.run(prompt, %GeminiCliSdk.Options{model: GeminiCliSdk.Models.fast_model()})
+  def ask(prompt, opts) do
+    GeminiCliSdk.run(prompt, opts)
   end
 end
 
@@ -93,7 +88,7 @@ defmodule MyApp.AI.Mock do
   @behaviour MyApp.AI
 
   @impl true
-  def ask(_prompt), do: {:ok, "Mock response"}
+  def ask(_prompt, _opts), do: {:ok, "Mock response"}
 end
 ```
 
@@ -103,8 +98,8 @@ Then in your application code:
 defmodule MyApp.Feature do
   @ai_module Application.compile_env(:my_app, :ai_module, MyApp.AI.Gemini)
 
-  def process(input) do
-    @ai_module.ask("Process: #{input}")
+  def process(input, opts \\ %GeminiCliSdk.Options{}) do
+    @ai_module.ask("Process: #{input}", opts)
   end
 end
 ```

@@ -15,7 +15,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias CliSubprocessCore.ProviderProfiles.Gemini, as: CoreGemini
   alias CliSubprocessCore.Session
   alias CliSubprocessCore.TransportError, as: CoreTransportError
-  alias GeminiCliSdk.{ArgBuilder, Config, Env, Options, Types}
+  alias GeminiCliSdk.{ArgBuilder, Config, Options, Types}
   alias GeminiCliSdk.CLI, as: GeminiCLI
 
   @runtime_metadata %{lane: :gemini_cli_sdk}
@@ -88,14 +88,18 @@ defmodule GeminiCliSdk.Runtime.CLI do
       |> maybe_override_execution_surface(Keyword.get(opts, :execution_surface))
       |> Options.validate!()
 
-    with {:ok, %CommandSpec{} = command_spec} <- GeminiCLI.resolve(options.execution_surface),
-         {:ok, settings_path, temp_dir} <- Config.build_settings_file(options.settings) do
+    with {:ok, %CommandSpec{} = command_spec} <-
+           GeminiCLI.resolve(
+             execution_surface: options.execution_surface,
+             cli_command: options.cli_command
+           ),
+         {:ok, settings_cwd, temp_dir} <- Config.build_runtime_workspace(options.settings) do
       session_opts =
         build_session_options(
           prompt,
           options,
           command_spec,
-          settings_path,
+          settings_cwd,
           Keyword.take(opts, [:subscriber, :metadata, :session_event_tag])
         )
 
@@ -237,16 +241,13 @@ defmodule GeminiCliSdk.Runtime.CLI do
       options = options_from_provider_opts(opts)
 
       args =
-        options
-        |> ArgBuilder.build_args(prompt)
-        |> maybe_add_settings(Keyword.get(opts, :settings_path))
+        ArgBuilder.build_args(options, prompt)
 
       {:ok,
        CliSubprocessCore.Command.new(
          command_spec,
          args,
-         cwd: default_cwd(Keyword.get(opts, :cwd), Keyword.get(opts, :execution_surface)),
-         env: Keyword.get(opts, :env, %{})
+         cwd: Keyword.get(opts, :cwd)
        )}
     else
       {:error, _reason} = error ->
@@ -261,7 +262,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
          prompt,
          %Options{} = options,
          %CommandSpec{} = command_spec,
-         settings_path,
+         settings_cwd,
          runtime_opts
        ) do
     metadata =
@@ -283,15 +284,15 @@ defmodule GeminiCliSdk.Runtime.CLI do
       yolo: options.yolo,
       approval_mode: options.approval_mode,
       sandbox: options.sandbox,
+      skip_trust: options.skip_trust,
       resume: options.resume,
       extensions: options.extensions,
-      include_directories: options.include_directories,
+      include_directories: effective_include_directories(options, settings_cwd),
       allowed_tools: options.allowed_tools,
       allowed_mcp_server_names: options.allowed_mcp_server_names,
       debug: options.debug,
-      settings_path: settings_path,
-      cwd: default_cwd(options.cwd, options.execution_surface),
-      env: build_env(options),
+      system_prompt: options.system_prompt,
+      cwd: default_cwd(options.cwd, options.execution_surface, settings_cwd),
       headless_timeout_ms: :infinity,
       max_stderr_buffer_size: options.max_stderr_buffer_bytes
     ] ++ Options.execution_surface_options(options)
@@ -299,30 +300,22 @@ defmodule GeminiCliSdk.Runtime.CLI do
 
   defp options_from_provider_opts(opts) do
     %Options{
+      cli_command: Keyword.get(opts, :cli_command),
       model_payload: Keyword.get(opts, :model_payload),
       model: Keyword.get(opts, :model),
       yolo: Keyword.get(opts, :yolo, false),
       approval_mode: Keyword.get(opts, :approval_mode),
       sandbox: Keyword.get(opts, :sandbox, false),
+      skip_trust: Keyword.get(opts, :skip_trust, false),
       resume: Keyword.get(opts, :resume),
       extensions: Keyword.get(opts, :extensions, []),
       include_directories: Keyword.get(opts, :include_directories, []),
       allowed_tools: Keyword.get(opts, :allowed_tools, []),
       allowed_mcp_server_names: Keyword.get(opts, :allowed_mcp_server_names, []),
       debug: Keyword.get(opts, :debug, false),
-      output_format: Keyword.get(opts, :output_format, "stream-json")
+      output_format: Keyword.get(opts, :output_format, "stream-json"),
+      system_prompt: Keyword.get(opts, :system_prompt)
     }
-  end
-
-  defp maybe_add_settings(args, nil), do: args
-  defp maybe_add_settings(args, path), do: args ++ ["--settings-file", path]
-
-  defp build_env(%Options{env: env, system_prompt: nil}), do: Env.build_cli_env(env)
-
-  defp build_env(%Options{env: env, system_prompt: system_prompt}) do
-    env
-    |> Env.build_cli_env()
-    |> Map.put("GEMINI_SYSTEM_MD", system_prompt)
   end
 
   defp maybe_override_execution_surface(%Options{} = options, nil), do: options
@@ -331,11 +324,29 @@ defmodule GeminiCliSdk.Runtime.CLI do
     %{options | execution_surface: execution_surface}
   end
 
-  defp default_cwd(cwd, _execution_surface) when is_binary(cwd) and cwd != "", do: cwd
+  defp default_cwd(cwd, _execution_surface, _settings_cwd) when is_binary(cwd) and cwd != "",
+    do: cwd
 
-  defp default_cwd(_cwd, execution_surface) do
-    if ExecutionSurface.nonlocal_path_surface?(execution_surface), do: nil, else: File.cwd!()
+  defp default_cwd(_cwd, execution_surface, settings_cwd) do
+    cond do
+      ExecutionSurface.nonlocal_path_surface?(execution_surface) -> nil
+      is_binary(settings_cwd) -> settings_cwd
+      true -> File.cwd!()
+    end
   end
+
+  defp effective_include_directories(%Options{} = options, settings_cwd) do
+    if is_binary(settings_cwd) and
+         not ExecutionSurface.nonlocal_path_surface?(options.execution_surface) do
+      source_cwd = default_source_cwd(options.cwd)
+      Enum.uniq(options.include_directories ++ [source_cwd])
+    else
+      options.include_directories
+    end
+  end
+
+  defp default_source_cwd(cwd) when is_binary(cwd) and cwd != "", do: cwd
+  defp default_source_cwd(_cwd), do: File.cwd!()
 
   defp decode_public_raw(raw) do
     map = stringify_keys(raw)

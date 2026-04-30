@@ -6,98 +6,87 @@ defmodule GeminiCliSdk.Runtime.CLITest do
   alias GeminiCliSdk.{Options, Runtime.CLI, TestSupport, Types}
 
   defp write_runtime_stub!(dir) do
-    script = """
-    #!/usr/bin/env bash
-    set -euo pipefail
-    sleep 60
-    """
-
-    TestSupport.write_executable!(dir, "gemini", script)
+    TestSupport.write_cli_stub!(dir, block?: true)
   end
 
   defp write_list_stub!(dir) do
-    script = """
-    #!/usr/bin/env bash
-    set -euo pipefail
-    printf '%s\n' 'Available sessions (2):' '  1. Fix bug [abc123]' '  2. Refactor [def456]'
-    """
-
-    TestSupport.write_executable!(dir, "gemini", script)
+    TestSupport.write_cli_stub!(dir,
+      output: "Available sessions (2):\n  1. Fix bug [abc123]\n  2. Refactor [def456]"
+    )
   end
 
   describe "start_session/1" do
-    test "builds a core session with Gemini-compatible invocation args and env" do
+    test "builds a core session with Gemini-compatible invocation args" do
       dir = TestSupport.tmp_dir!("gemini_runtime_cli")
       stub_path = write_runtime_stub!(dir)
       monitor_ref = make_ref()
 
       try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
-          options = %Options{
-            model: "gemini-2.5-pro",
-            approval_mode: :plan,
-            sandbox: true,
-            resume: "abc123",
-            extensions: ["ext1", "ext2"],
-            include_directories: ["src", "docs"],
-            allowed_tools: ["Bash", "Read"],
-            allowed_mcp_server_names: ["github", "jira"],
-            debug: true,
-            settings: %{"theme" => "test"},
-            system_prompt: "Be concise.",
-            env: %{"GEMINI_TEST_RUNTIME" => "1"}
-          }
+        options = %Options{
+          cli_command: stub_path,
+          model: "gemini-2.5-pro",
+          approval_mode: :plan,
+          sandbox: true,
+          skip_trust: true,
+          resume: "abc123",
+          extensions: ["ext1", "ext2"],
+          include_directories: ["src", "docs"],
+          allowed_tools: ["Bash", "Read"],
+          allowed_mcp_server_names: ["github", "jira"],
+          debug: true,
+          settings: %{"theme" => "test"},
+          system_prompt: "Be concise."
+        }
 
-          assert {:ok, session, %{info: info, temp_dir: temp_dir}} =
-                   CLI.start_session(
-                     prompt: "hello",
-                     options: options,
-                     subscriber: {self(), monitor_ref}
-                   )
+        assert {:ok, session, %{info: info, temp_dir: temp_dir}} =
+                 CLI.start_session(
+                   prompt: "hello",
+                   options: options,
+                   subscriber: {self(), monitor_ref}
+                 )
 
-          assert info.provider == :gemini
-          assert info.runtime.provider == :gemini
-          assert info.invocation.command == stub_path
-          assert info.invocation.cwd == File.cwd!()
-          assert info.invocation.env["GEMINI_TEST_RUNTIME"] == "1"
-          assert info.invocation.env["GEMINI_SYSTEM_MD"] == "Be concise."
+        assert info.provider == :gemini
+        assert info.runtime.provider == :gemini
+        assert info.invocation.command == stub_path
+        assert info.invocation.cwd == temp_dir
+        assert info.invocation.env == %{}
 
-          args = info.invocation.args
+        settings_path = Path.join([temp_dir, ".gemini", "settings.json"])
+        assert File.exists?(settings_path)
 
-          assert "--prompt" in args
-          assert "--output-format" in args
-          assert "--model" in args
-          assert "--approval-mode" in args
-          assert "--sandbox" in args
-          assert "--resume" in args
-          assert "--include-directories" in args
-          assert "--allowed-tools" in args
-          assert "--allowed-mcp-server-names" in args
-          assert "--debug" in args
+        args = info.invocation.args
 
-          extension_indices =
-            args
-            |> Enum.with_index()
-            |> Enum.filter(fn {value, _index} -> value == "--extensions" end)
-            |> Enum.map(fn {_value, index} -> index end)
+        assert "--prompt" in args
 
-          assert length(extension_indices) == 2
-          assert Enum.map(extension_indices, &Enum.at(args, &1 + 1)) == ["ext1", "ext2"]
+        assert Enum.at(args, Enum.find_index(args, &(&1 == "--prompt")) + 1) =~
+                 "Be concise.\n\nhello"
 
-          settings_idx = Enum.find_index(args, &(&1 == "--settings-file"))
-          assert is_integer(settings_idx)
+        assert "--output-format" in args
+        assert "--model" in args
+        assert "--approval-mode" in args
+        assert "--sandbox" in args
+        assert "--skip-trust" in args
+        assert "--resume" in args
+        assert "--include-directories" in args
+        assert "--allowed-tools" in args
+        assert "--allowed-mcp-server-names" in args
+        assert "--debug" in args
+        refute "--settings-file" in args
 
-          settings_path = Enum.at(args, settings_idx + 1)
-          assert is_binary(settings_path)
-          assert File.exists?(settings_path)
-          assert String.starts_with?(settings_path, temp_dir)
+        extension_indices =
+          args
+          |> Enum.with_index()
+          |> Enum.filter(fn {value, _index} -> value == "--extensions" end)
+          |> Enum.map(fn {_value, index} -> index end)
 
-          session_monitor = Process.monitor(session)
-          assert :ok = CLI.close(session)
-          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+        assert length(extension_indices) == 2
+        assert Enum.map(extension_indices, &Enum.at(args, &1 + 1)) == ["ext1", "ext2"]
 
-          File.rm_rf!(temp_dir)
-        end)
+        session_monitor = Process.monitor(session)
+        assert :ok = CLI.close(session)
+        assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
+
+        File.rm_rf!(temp_dir)
       after
         File.rm_rf(dir)
       end
@@ -110,43 +99,38 @@ defmodule GeminiCliSdk.Runtime.CLITest do
       monitor_ref = make_ref()
 
       try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
-          options =
-            Options.validate!(%Options{
-              execution_surface: [
-                surface_kind: :ssh_exec,
-                transport_options:
-                  FakeSSH.transport_options(fake_ssh,
-                    destination: "gemini-runtime.test.example",
-                    port: 2222
-                  )
-              ],
-              env: %{
-                "GEMINI_TEST_RUNTIME" => "1",
-                "PATH" => dir <> ":" <> (System.get_env("PATH") || "")
-              }
-            })
+        options =
+          Options.validate!(%Options{
+            cli_command: stub_path,
+            execution_surface: [
+              surface_kind: :ssh_exec,
+              transport_options:
+                FakeSSH.transport_options(fake_ssh,
+                  destination: "gemini-runtime.test.example",
+                  port: 2222
+                )
+            ]
+          })
 
-          assert {:ok, session, %{info: info}} =
-                   CLI.start_session(
-                     prompt: "hello over ssh",
-                     options: options,
-                     subscriber: {self(), monitor_ref}
-                   )
+        assert {:ok, session, %{info: info}} =
+                 CLI.start_session(
+                   prompt: "hello over ssh",
+                   options: options,
+                   subscriber: {self(), monitor_ref}
+                 )
 
-          assert info.delivery.tagged_event_tag == CLI.session_event_tag()
-          assert info.transport.info.surface_kind == :ssh_exec
+        assert info.delivery.tagged_event_tag == CLI.session_event_tag()
+        assert info.transport.info.surface_kind == :ssh_exec
 
-          assert info.transport.info.delivery.tagged_event_tag ==
-                   :cli_subprocess_core_session_transport
+        assert info.transport.info.delivery.tagged_event_tag ==
+                 :cli_subprocess_core_session_transport
 
-          assert FakeSSH.wait_until_written(fake_ssh, 1_000) == :ok
-          assert FakeSSH.read_manifest!(fake_ssh) =~ "destination=gemini-runtime.test.example"
+        assert FakeSSH.wait_until_written(fake_ssh, 1_000) == :ok
+        assert FakeSSH.read_manifest!(fake_ssh) =~ "destination=gemini-runtime.test.example"
 
-          session_monitor = Process.monitor(session)
-          assert :ok = CLI.close(session)
-          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
-        end)
+        session_monitor = Process.monitor(session)
+        assert :ok = CLI.close(session)
+        assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
       after
         FakeSSH.cleanup(fake_ssh)
         File.rm_rf(dir)
@@ -160,30 +144,28 @@ defmodule GeminiCliSdk.Runtime.CLITest do
       monitor_ref = make_ref()
 
       try do
-        TestSupport.with_env(%{"GEMINI_CLI_PATH" => stub_path}, fn ->
-          options =
-            Options.validate!(%Options{
-              execution_surface: [
-                surface_kind: :ssh_exec,
-                transport_options:
-                  FakeSSH.transport_options(fake_ssh, destination: "gemini-runtime.cwd.example")
-              ],
-              env: %{"PATH" => dir <> ":" <> (System.get_env("PATH") || "")}
-            })
+        options =
+          Options.validate!(%Options{
+            cli_command: stub_path,
+            execution_surface: [
+              surface_kind: :ssh_exec,
+              transport_options:
+                FakeSSH.transport_options(fake_ssh, destination: "gemini-runtime.cwd.example")
+            ]
+          })
 
-          assert {:ok, session, %{info: info}} =
-                   CLI.start_session(
-                     prompt: "hello over ssh",
-                     options: options,
-                     subscriber: {self(), monitor_ref}
-                   )
+        assert {:ok, session, %{info: info}} =
+                 CLI.start_session(
+                   prompt: "hello over ssh",
+                   options: options,
+                   subscriber: {self(), monitor_ref}
+                 )
 
-          assert info.invocation.cwd == nil
+        assert info.invocation.cwd == nil
 
-          session_monitor = Process.monitor(session)
-          assert :ok = CLI.close(session)
-          assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
-        end)
+        session_monitor = Process.monitor(session)
+        assert :ok = CLI.close(session)
+        assert_receive {:DOWN, ^session_monitor, :process, ^session, :normal}, 2_000
       after
         FakeSSH.cleanup(fake_ssh)
         File.rm_rf(dir)
@@ -210,23 +192,14 @@ defmodule GeminiCliSdk.Runtime.CLITest do
       stub_path = write_list_stub!(dir)
 
       try do
-        TestSupport.with_env(
-          %{
-            "GEMINI_CLI_PATH" => stub_path,
-            "GEMINI_TEST_OUTPUT" =>
-              "Available sessions (2):\n  1. Fix bug [abc123]\n  2. Refactor [def456]"
-          },
-          fn ->
-            assert {:ok, [first, second]} = CLI.list_provider_sessions()
-            assert first.id == "abc123"
-            assert first.label == "Fix bug"
-            assert first.source_kind == :cli_history
-            assert first.metadata.index == 1
-            assert second.id == "def456"
-            assert second.label == "Refactor"
-            assert second.metadata.index == 2
-          end
-        )
+        assert {:ok, [first, second]} = CLI.list_provider_sessions(cli_command: stub_path)
+        assert first.id == "abc123"
+        assert first.label == "Fix bug"
+        assert first.source_kind == :cli_history
+        assert first.metadata.index == 1
+        assert second.id == "def456"
+        assert second.label == "Refactor"
+        assert second.metadata.index == 2
       after
         File.rm_rf(dir)
       end

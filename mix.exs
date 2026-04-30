@@ -157,10 +157,10 @@ defmodule GeminiCliSdk.MixProject do
         Configuration: [
           GeminiCliSdk.Options,
           GeminiCliSdk.Models,
+          GeminiCliSdk.SettingsProfiles,
           GeminiCliSdk.Configuration,
           GeminiCliSdk.CLI,
           GeminiCliSdk.ArgBuilder,
-          GeminiCliSdk.Env,
           GeminiCliSdk.Config
         ],
         Internals: [

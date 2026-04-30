@@ -12,8 +12,8 @@ That means:
   authoritative
 - raw `model` input is resolved through the shared core only when a payload was
   not already supplied
-- repo-local `GEMINI_MODEL` env defaults are fallback inputs, not a second
-  post-payload resolution path
+- model defaults come from the shared core registry when no explicit model input
+  is supplied
 
 ## Available Models
 

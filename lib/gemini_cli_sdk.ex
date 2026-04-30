@@ -157,8 +157,8 @@ defmodule GeminiCliSdk do
   @doc """
   Returns the installed Gemini CLI version string.
   """
-  @spec version() :: {:ok, String.t()} | {:error, Error.t()}
-  def version do
-    GeminiCliSdk.Command.run(["--version"])
+  @spec version(keyword()) :: {:ok, String.t()} | {:error, Error.t()}
+  def version(opts \\ []) do
+    GeminiCliSdk.Command.run(["--version"], opts)
   end
 end

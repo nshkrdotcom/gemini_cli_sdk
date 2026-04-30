@@ -19,7 +19,7 @@ GeminiCliSdk provides structured error handling through the `GeminiCliSdk.Error`
 
 | Kind | Exit Code | Description |
 |------|-----------|-------------|
-| `:cli_not_found` | -- | The `gemini` binary is not in PATH or GEMINI_CLI_PATH |
+| `:cli_not_found` | -- | The `gemini` binary was not found or an explicit `cli_command` path is invalid |
 | `:auth_error` | 41 | Authentication failed (invalid API key, expired token) |
 | `:input_error` | 42 | Invalid input (bad prompt, malformed request) |
 | `:config_error` | 52 | Configuration error (invalid settings) |
@@ -31,8 +31,8 @@ GeminiCliSdk provides structured error handling through the `GeminiCliSdk.Error`
 On SSH-backed `execution_surface` values, Gemini is resolved on the remote
 host. If the target shell cannot find `gemini`, the SDK returns
 `:cli_not_found` with the remote stderr attached. If Gemini is installed
-outside the remote non-login `PATH`, pass a remote `PATH` override in
-`Options.env`.
+outside the remote non-login `PATH`, pass a remote command path through
+`Options.cli_command`.
 
 ## Synchronous Error Handling
 

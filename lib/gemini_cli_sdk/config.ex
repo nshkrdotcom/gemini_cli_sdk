@@ -1,19 +1,21 @@
 defmodule GeminiCliSdk.Config do
-  @moduledoc "Manages temporary settings files for Gemini CLI configuration."
+  @moduledoc "Manages temporary runtime files for Gemini CLI configuration."
 
   alias GeminiCliSdk.Error
 
-  @spec build_settings_file(map() | nil) ::
-          {:ok, path :: String.t() | nil, temp_dir :: String.t() | nil}
+  @spec build_runtime_workspace(map() | nil) ::
+          {:ok, cwd :: String.t() | nil, temp_dir :: String.t() | nil}
           | {:error, Error.t()}
-  def build_settings_file(nil), do: {:ok, nil, nil}
+  def build_runtime_workspace(nil), do: {:ok, nil, nil}
 
-  def build_settings_file(settings) when is_map(settings) do
+  def build_runtime_workspace(settings) when is_map(settings) do
     with {:ok, temp_dir} <- create_temp_dir(),
+         gemini_dir = Path.join(temp_dir, ".gemini"),
+         :ok <- File.mkdir_p(gemini_dir),
          {:ok, encoded} <- encode_settings(settings),
-         settings_path = Path.join(temp_dir, "settings.json"),
+         settings_path = Path.join(gemini_dir, "settings.json"),
          :ok <- File.write(settings_path, encoded) do
-      {:ok, settings_path, temp_dir}
+      {:ok, temp_dir, temp_dir}
     else
       {:error, reason} ->
         {:error,

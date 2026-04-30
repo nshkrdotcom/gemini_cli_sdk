@@ -39,7 +39,7 @@ GeminiCliSdk.execute/2          -- validates options
 Stream.execute/2                -- returns Stream.resource/3
   |
   v
-Runtime.CLI.start_session/1     -- resolves CLI, preserves Gemini args/env
+Runtime.CLI.start_session/1     -- resolves CLI and preserves Gemini args
   |                                starts a CliSubprocessCore.Session
   v
 CliSubprocessCore.Session       -- shared common CLI session engine
@@ -109,7 +109,8 @@ This is the Gemini runtime kit above `CliSubprocessCore.Session`.
 
 It is responsible for:
 
-- preserving Gemini CLI command resolution, including `GEMINI_CLI_PATH` and `npx`
+- preserving Gemini CLI command resolution, including explicit `cli_command`,
+  PATH lookup, npm global lookup, and npx fallback
 - preserving Gemini option-to-flag shaping for the public SDK surface
 - starting the shared core session runtime
 - projecting normalized core events back into `GeminiCliSdk.Types.*`
@@ -128,12 +129,13 @@ events for the public Gemini surface.
 
 Resolves the `gemini` binary location using a 4-strategy waterfall:
 
-1. `GEMINI_CLI_PATH` environment variable (explicit path)
+1. explicit `cli_command`, `command`, `executable`, or `command_spec`
 2. `gemini` on system `PATH` (globally installed)
 3. npm global bin directory (`npm prefix -g`/bin/gemini)
 4. `npx` fallback (`npx --yes --package @google/gemini-cli gemini`)
 
-Set `GEMINI_NO_NPX=1` to disable the npx fallback. Returns a `CommandSpec` with `program` and `argv_prefix` (used by the npx strategy to prepend `["--yes", "--package", "@google/gemini-cli", "gemini"]`).
+Returns a `CommandSpec` with `program` and `argv_prefix` (used by the npx
+strategy to prepend `["--yes", "--package", "@google/gemini-cli", "gemini"]`).
 
 ### `GeminiCliSdk.ArgBuilder`
 
@@ -142,13 +144,11 @@ is no longer part of a Gemini-owned transport/runtime stack; it is only used by
 `GeminiCliSdk.Runtime.CLI` to preserve Gemini-specific invocation semantics
 above the shared core session engine.
 
-### `GeminiCliSdk.Env`
-
-Builds the subprocess environment by filtering the current system env (passing through `GEMINI_*` and `GOOGLE_*` prefixed variables) and merging user overrides.
-
 ### `GeminiCliSdk.Config`
 
-Handles temporary settings files. When `Options.settings` is set, it writes a `settings.json` to a temp directory, which is cleaned up after the stream completes.
+Handles temporary runtime workspaces. When `Options.settings` is set, it writes
+`.gemini/settings.json` to a temp directory, which is cleaned up after the
+stream completes.
 
 ### `GeminiCliSdk.Command`
 

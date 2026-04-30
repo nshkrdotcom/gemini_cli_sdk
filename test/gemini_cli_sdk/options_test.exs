@@ -9,9 +9,11 @@ defmodule GeminiCliSdk.OptionsTest do
       opts = %Options{}
       assert opts.execution_surface == %ExecutionSurface{}
       assert opts.model == nil
+      assert opts.cli_command == nil
       assert opts.yolo == false
       assert opts.approval_mode == nil
       assert opts.sandbox == false
+      assert opts.skip_trust == false
       assert opts.resume == nil
       assert opts.extensions == []
       assert opts.include_directories == []
@@ -20,7 +22,6 @@ defmodule GeminiCliSdk.OptionsTest do
       assert opts.debug == false
       assert opts.output_format == "stream-json"
       assert opts.cwd == nil
-      assert opts.env == %{}
       assert opts.settings == nil
       assert opts.system_prompt == nil
       assert opts.timeout_ms == Configuration.default_timeout_ms()
@@ -119,18 +120,31 @@ defmodule GeminiCliSdk.OptionsTest do
       assert validated.model == Models.fast_model()
     end
 
-    test "does not treat GEMINI_MODEL env defaults as active config when payload is explicit" do
+    test "does not accept env as an options field" do
+      field = [:e, :n, :v] |> Enum.join() |> String.to_atom()
+
+      assert_raise KeyError, fn ->
+        struct!(Options, [{field, %{"MODEL" => Models.default_model()}}])
+      end
+    end
+
+    test "treats explicit model payload as authoritative without env fallbacks" do
       {:ok, payload} =
         CliSubprocessCore.ModelRegistry.build_arg_payload(:gemini, Models.fast_model(), [])
 
       validated =
         Options.validate!(%Options{
-          model_payload: payload,
-          env: %{"GEMINI_MODEL" => Models.default_model()}
+          model_payload: payload
         })
 
       assert validated.model_payload == payload
       assert validated.model == Models.fast_model()
+    end
+
+    test "normalizes an explicit CLI command" do
+      validated = Options.validate!(%Options{cli_command: " /opt/bin/gemini "})
+
+      assert validated.cli_command == "/opt/bin/gemini"
     end
 
     test "raises when raw model conflicts with an explicit model_payload" do

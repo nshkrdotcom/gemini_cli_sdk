@@ -4,22 +4,22 @@ defmodule GeminiCliSdk.ConfigTest do
   alias GeminiCliSdk.Config
   alias GeminiCliSdk.Error
 
-  describe "build_settings_file/1" do
+  describe "build_runtime_workspace/1" do
     test "returns nil path and temp_dir when settings is nil" do
-      assert {:ok, nil, nil} = Config.build_settings_file(nil)
+      assert {:ok, nil, nil} = Config.build_runtime_workspace(nil)
     end
 
-    test "creates temp settings.json from map" do
+    test "creates workspace settings.json from map" do
       settings = %{
         "general" => %{"defaultApprovalMode" => "yolo"},
         "tools" => %{"allowed" => ["Bash"]}
       }
 
-      assert {:ok, path, temp_dir} = Config.build_settings_file(settings)
-      assert path != nil
+      assert {:ok, cwd, temp_dir} = Config.build_runtime_workspace(settings)
+      path = Path.join([cwd, ".gemini", "settings.json"])
+      assert cwd != nil
       assert temp_dir != nil
       assert File.exists?(path)
-      assert String.ends_with?(path, "settings.json")
 
       content = path |> File.read!() |> Jason.decode!()
       assert content["general"]["defaultApprovalMode"] == "yolo"
@@ -33,8 +33,8 @@ defmodule GeminiCliSdk.ConfigTest do
     test "creates unique temp directories" do
       settings = %{"general" => %{}}
 
-      {:ok, _path1, dir1} = Config.build_settings_file(settings)
-      {:ok, _path2, dir2} = Config.build_settings_file(settings)
+      {:ok, _cwd1, dir1} = Config.build_runtime_workspace(settings)
+      {:ok, _cwd2, dir2} = Config.build_runtime_workspace(settings)
 
       assert dir1 != dir2
 
@@ -43,7 +43,8 @@ defmodule GeminiCliSdk.ConfigTest do
     end
 
     test "handles empty settings map" do
-      assert {:ok, path, temp_dir} = Config.build_settings_file(%{})
+      assert {:ok, cwd, temp_dir} = Config.build_runtime_workspace(%{})
+      path = Path.join([cwd, ".gemini", "settings.json"])
       assert File.exists?(path)
 
       content = path |> File.read!() |> Jason.decode!()
@@ -58,7 +59,7 @@ defmodule GeminiCliSdk.ConfigTest do
           "github" => %{
             "command" => "npx",
             "args" => ["-y", "@modelcontextprotocol/server-github"],
-            "env" => %{"GITHUB_TOKEN" => "ghp_test"}
+            "headers" => %{"Authorization" => "Bearer ghp_test"}
           }
         },
         "security" => %{
@@ -66,7 +67,8 @@ defmodule GeminiCliSdk.ConfigTest do
         }
       }
 
-      {:ok, path, temp_dir} = Config.build_settings_file(settings)
+      {:ok, cwd, temp_dir} = Config.build_runtime_workspace(settings)
+      path = Path.join([cwd, ".gemini", "settings.json"])
       content = path |> File.read!() |> Jason.decode!()
 
       assert content["mcpServers"]["github"]["command"] == "npx"
@@ -82,7 +84,8 @@ defmodule GeminiCliSdk.ConfigTest do
     end
 
     test "removes temp directory and contents" do
-      {:ok, path, temp_dir} = Config.build_settings_file(%{"test" => true})
+      {:ok, cwd, temp_dir} = Config.build_runtime_workspace(%{"test" => true})
+      path = Path.join([cwd, ".gemini", "settings.json"])
       assert File.exists?(path)
       assert File.exists?(temp_dir)
 
