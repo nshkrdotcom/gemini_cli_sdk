@@ -225,7 +225,7 @@ without importing ASM, passes keyword `execution_surface` input, and demonstrate
 the SDK-native `GeminiCliSdk.SettingsProfiles.plain_response/0` profile:
 
 ```bash
-mix run examples/promotion_path/sdk_direct_gemini.exs -- \
+mix run examples/promotion_path/sdk_direct_gemini.exs \
   --model gemini-3.1-flash-lite-preview \
   --prompt "Reply with exactly: gemini sdk direct ok"
 ```

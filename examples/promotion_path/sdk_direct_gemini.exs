@@ -3,7 +3,7 @@
 # SDK-direct Gemini promotion-path verifier.
 #
 # Usage:
-#   mix run examples/promotion_path/sdk_direct_gemini.exs -- \
+#   mix run examples/promotion_path/sdk_direct_gemini.exs \
 #     --model gemini-3.1-flash-lite-preview \
 #     --prompt "Reply with exactly: gemini sdk direct ok"
 #
