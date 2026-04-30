@@ -11,6 +11,12 @@
 - Use `CliSubprocessCore` facades for execution surfaces, transport errors, transport info, process exits, sessions, commands, and provider model policy.
 - Keep `cli_subprocess_core` dependency resolution publish-aware: local path deps for sibling development, Hex constraints for release builds.
 
+## ASM Boundary
+- Gemini-specific flags, settings profiles, extensions, allowed tools, MCP server names, approval mode, skip-trust, and provider CLI sandbox behavior belong in this SDK first.
+- Behavior can move upward into ASM only after all-four proof across Claude, Codex, Gemini, and Amp.
+- Before asserting a Gemini-native setting or CLI flag exists, add or update `guides/provider_behavior_manifest.md` with vendored source, fixture, or live-smoke evidence.
+- SDK-direct promotion examples in `examples/promotion_path/` must not import or alias ASM; hybrid examples belong in ASM or application repos.
+
 ## Gates
 - Run `mix format`.
 - Run `mix compile --warnings-as-errors`.

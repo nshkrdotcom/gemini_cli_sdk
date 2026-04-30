@@ -117,6 +117,7 @@ defmodule GeminiCliSdk.MixProject do
         "guides/sessions.md": [title: "Sessions"],
         "guides/error-handling.md": [title: "Error Handling"],
         "guides/architecture.md": [title: "Architecture"],
+        "guides/provider_behavior_manifest.md": [title: "Provider Behavior Manifest"],
         "guides/testing.md": [title: "Testing"],
         "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
@@ -137,6 +138,7 @@ defmodule GeminiCliSdk.MixProject do
         ],
         Operations: [
           "guides/architecture.md",
+          "guides/provider_behavior_manifest.md",
           "guides/testing.md"
         ],
         Reference: ["CHANGELOG.md", "LICENSE"]

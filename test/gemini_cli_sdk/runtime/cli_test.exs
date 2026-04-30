@@ -292,4 +292,49 @@ defmodule GeminiCliSdk.Runtime.CLITest do
       assert exit_failure.message =~ "code 0"
     end
   end
+
+  describe "render_for_test/1" do
+    test "renders Gemini-native flags and settings without resolving or spawning the CLI" do
+      {:ok, render} =
+        CLI.render_for_test(
+          prompt: "return ok",
+          execution_surface: [
+            surface_kind: :local_subprocess,
+            observability: %{suite: :promotion_path}
+          ],
+          options: %Options{
+            model: "gemini-3.1-flash-lite-preview",
+            approval_mode: :plan,
+            skip_trust: true,
+            extensions: ["none"],
+            allowed_tools: ["Read"],
+            allowed_mcp_server_names: ["docs"],
+            settings: GeminiCliSdk.SettingsProfiles.plain_response()
+          }
+        )
+
+      assert render.provider == :gemini
+      assert render.execution_surface.observability == %{suite: :promotion_path}
+      assert render.settings["tools"]["core"] == []
+      assert render.provider_native.extensions == ["none"]
+      assert render.provider_native.allowed_tools == ["Read"]
+      assert render.provider_native.allowed_mcp_server_names == ["docs"]
+
+      args = render.args
+      assert flag_value(args, "--prompt") == "return ok"
+      assert flag_value(args, "--model") == "gemini-3.1-flash-lite-preview"
+      assert flag_value(args, "--approval-mode") == "plan"
+      assert flag_value(args, "--extensions") == "none"
+      assert flag_value(args, "--allowed-tools") == "Read"
+      assert flag_value(args, "--allowed-mcp-server-names") == "docs"
+      assert "--skip-trust" in args
+    end
+  end
+
+  defp flag_value(args, flag) do
+    case Enum.find_index(args, &(&1 == flag)) do
+      nil -> nil
+      idx -> Enum.at(args, idx + 1)
+    end
+  end
 end

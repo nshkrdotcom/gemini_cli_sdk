@@ -153,6 +153,42 @@ defmodule GeminiCliSdk.Runtime.CLI do
     |> Enum.uniq()
   end
 
+  @doc false
+  @spec render_for_test(keyword()) :: {:ok, map()} | {:error, term()}
+  def render_for_test(opts) when is_list(opts) do
+    prompt = Keyword.get(opts, :prompt)
+
+    options =
+      opts
+      |> Keyword.get(:options, %Options{})
+      |> maybe_override_execution_surface(Keyword.get(opts, :execution_surface))
+      |> Options.validate!()
+
+    {:ok,
+     %{
+       provider: :gemini,
+       args: ArgBuilder.build_args(options, prompt),
+       cwd: options.cwd,
+       env: %{},
+       execution_surface: options.execution_surface,
+       settings: options.settings,
+       provider_native: %{
+         approval_mode: options.approval_mode,
+         sandbox: options.sandbox,
+         skip_trust: options.skip_trust,
+         resume: options.resume,
+         extensions: options.extensions,
+         include_directories: options.include_directories,
+         allowed_tools: options.allowed_tools,
+         allowed_mcp_server_names: options.allowed_mcp_server_names,
+         system_prompt: options.system_prompt
+       }
+     }}
+  rescue
+    error in [ArgumentError] ->
+      {:error, error}
+  end
+
   @spec list_provider_sessions(keyword()) :: {:ok, [map()]} | {:error, term()}
   def list_provider_sessions(opts \\ []) when is_list(opts) do
     with {:ok, sessions} <- GeminiCliSdk.list_session_entries(opts) do

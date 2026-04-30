@@ -211,6 +211,29 @@ shared core boundary. A `CliSubprocessCore.ModelRegistry.Selection` is the
 preferred form, and `Map.from_struct(selection)` is normalized back into the
 same canonical payload when callers already have a serialized struct map.
 
+## Promotion Path And Provider-Native Features
+
+`gemini_cli_sdk` is the authoritative home for Gemini-native CLI settings and
+flags. Gemini settings profiles, extension flags, allowed-tool flags, MCP
+server-name flags, approval mode, skip-trust, and provider CLI sandbox flags are
+SDK-owned behavior. They must not be promoted into generic ASM options unless
+equivalent behavior is proven across Claude, Codex, Gemini, and Amp.
+
+SDK-direct live verification lives in
+`examples/promotion_path/sdk_direct_gemini.exs`. It uses the Gemini SDK API
+without importing ASM, passes keyword `execution_surface` input, and demonstrates
+the SDK-native `GeminiCliSdk.SettingsProfiles.plain_response/0` profile:
+
+```bash
+mix run examples/promotion_path/sdk_direct_gemini.exs -- \
+  --model gemini-3.1-flash-lite-preview \
+  --prompt "Reply with exactly: gemini sdk direct ok"
+```
+
+Provider-native feature evidence is tracked in
+`guides/provider_behavior_manifest.md`. Add or update that manifest before
+translating any new Gemini-specific setting or CLI flag.
+
 ## Documentation
 
 Full documentation is available at [HexDocs](https://hexdocs.pm/gemini_cli_sdk).
