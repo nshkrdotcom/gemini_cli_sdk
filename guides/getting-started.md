@@ -3,7 +3,7 @@
 ## Prerequisites
 
 1. **Elixir** >= 1.14
-2. **Gemini CLI** installed and authenticated:
+2. **Gemini CLI** installed and authenticated for standalone direct use:
 
 ```bash
 # Install the Gemini CLI (or just have npx available -- the SDK finds it automatically)
@@ -12,6 +12,12 @@ npm install -g @google/gemini-cli
 # Authenticate
 gemini auth login
 ```
+
+Standalone use keeps normal Gemini CLI discovery and native login behavior.
+Governed launch is a separate mode: pass `Options.governed_authority` with the
+materialized command, cwd, env, target reference, credential lease reference,
+command reference, and redaction reference. Governed mode does not treat the
+normal native login profile or local `.gemini` settings as authority.
 
 3. `cli_subprocess_core` brings in a native subprocess dependency transitively,
    so a C compiler is required for the native build. On Debian/Ubuntu:

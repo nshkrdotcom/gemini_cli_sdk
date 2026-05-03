@@ -24,6 +24,7 @@ defmodule GeminiCliSdk.Schema.Options do
     Zoi.map(
       %{
         execution_surface: execution_surface_schema(),
+        governed_authority: Conventions.optional_any(),
         model_payload: Conventions.optional_any(),
         model: Conventions.optional_trimmed_string(),
         cli_command: Conventions.optional_trimmed_string(),
@@ -225,6 +226,7 @@ defmodule GeminiCliSdk.Schema.Options do
   defp project(parsed) do
     %Options{
       execution_surface: Map.get(parsed, :execution_surface, %ExecutionSurface{}),
+      governed_authority: Map.get(parsed, :governed_authority),
       model_payload: Map.get(parsed, :model_payload),
       model: blank_to_nil(Map.get(parsed, :model)),
       cli_command: blank_to_nil(Map.get(parsed, :cli_command)),

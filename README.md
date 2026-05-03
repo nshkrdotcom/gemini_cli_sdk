@@ -45,7 +45,15 @@ def deps do
 end
 ```
 
-**Prerequisites**: The [Gemini CLI](https://github.com/google-gemini/gemini-cli) must be installed and authenticated.
+**Prerequisites**: The [Gemini CLI](https://github.com/google-gemini/gemini-cli) must be installed and authenticated for standalone direct use.
+
+Standalone direct use keeps normal Gemini CLI discovery and native login
+behavior. Governed callers must pass `Options.governed_authority` with the
+materialized command, cwd, env, target reference, credential lease reference,
+command reference, and redaction reference. In governed mode, normal CLI
+discovery, explicit CLI command paths, native login state, settings-backed
+`.gemini` roots, cwd overrides, and execution-surface overrides are rejected
+instead of being used as authority.
 
 ## Quick Start
 

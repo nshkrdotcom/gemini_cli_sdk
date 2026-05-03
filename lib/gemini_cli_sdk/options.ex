@@ -4,10 +4,15 @@ defmodule GeminiCliSdk.Options do
 
   Every field maps to a specific CLI flag or subprocess setting. Fields with
   `nil` default are omitted from the generated argument list.
+
+  `governed_authority` selects governed launch mode. When present, Gemini CLI
+  command, cwd, env, and credential materialization must come from the authority
+  contract instead of normal CLI discovery, native login state, local settings,
+  or caller-provided launch overrides.
   """
 
   alias CliSubprocessCore.{ExecutionSurface, ModelInput}
-  alias GeminiCliSdk.Configuration
+  alias GeminiCliSdk.{Configuration, GovernedLaunch}
   alias GeminiCliSdk.Schema.Options, as: OptionsSchema
 
   @default_timeout_ms Configuration.default_timeout_ms()
@@ -17,6 +22,7 @@ defmodule GeminiCliSdk.Options do
 
   @type t :: %__MODULE__{
           execution_surface: ExecutionSurface.t(),
+          governed_authority: CliSubprocessCore.GovernedAuthority.t() | keyword() | map() | nil,
           model_payload: CliSubprocessCore.ModelRegistry.selection() | nil,
           model: String.t() | nil,
           cli_command: String.t() | nil,
@@ -39,6 +45,7 @@ defmodule GeminiCliSdk.Options do
         }
 
   defstruct execution_surface: %ExecutionSurface{},
+            governed_authority: nil,
             model_payload: nil,
             model: nil,
             cli_command: nil,
@@ -65,7 +72,9 @@ defmodule GeminiCliSdk.Options do
       {:ok, parsed} ->
         parsed
         |> validate_cross_field_conflicts!()
+        |> GovernedLaunch.validate_options!()
         |> normalize_model_input!()
+        |> GovernedLaunch.validate_options!()
 
       {:error, {:invalid_options, details}} ->
         raise ArgumentError, validation_message(details)

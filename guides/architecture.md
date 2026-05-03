@@ -14,7 +14,7 @@ graph TD
     F --> G[CliSubprocessCore transport facade]
     E --> I[CLI]
     E --> J[ArgBuilder]
-    E --> K[Env]
+    E --> K[GovernedLaunch]
     E --> L[Config]
     B --> M[Types]
     C --> Q[CliSubprocessCore.Command]
@@ -33,13 +33,13 @@ graph TD
 User Code
   |
   v
-GeminiCliSdk.execute/2          -- validates options
+GeminiCliSdk.execute/2          -- validates direct or governed options
   |
   v
 Stream.execute/2                -- returns Stream.resource/3
   |
   v
-Runtime.CLI.start_session/1     -- resolves CLI and preserves Gemini args
+Runtime.CLI.start_session/1     -- resolves standalone CLI or authority launch
   |                                starts a CliSubprocessCore.Session
   v
 CliSubprocessCore.Session       -- shared common CLI session engine
@@ -62,6 +62,13 @@ Stream.receive_next/1           -- selective receive, timeout handling, cleanup
   v
 User's Enum/Stream consumer     -- processes events lazily
 ```
+
+Governed runs use the SDK governed launch adapter to materialize command, cwd,
+environment, target, command, credential lease, and redaction references from
+the supplied authority. In that mode the runtime rejects standalone CLI
+discovery, explicit command overrides, settings-backed `.gemini` roots, cwd
+overrides, execution-surface overrides, env overrides, and model-payload env
+overrides.
 
 ### Synchronous Execution
 

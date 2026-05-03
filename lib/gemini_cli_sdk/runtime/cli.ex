@@ -15,7 +15,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
   alias CliSubprocessCore.ProviderProfiles.Gemini, as: CoreGemini
   alias CliSubprocessCore.Session
   alias CliSubprocessCore.TransportError, as: CoreTransportError
-  alias GeminiCliSdk.{ArgBuilder, Config, Options, Types}
+  alias GeminiCliSdk.{ArgBuilder, Config, GovernedLaunch, Options, Types}
   alias GeminiCliSdk.CLI, as: GeminiCLI
 
   @runtime_metadata %{lane: :gemini_cli_sdk}
@@ -111,11 +111,8 @@ defmodule GeminiCliSdk.Runtime.CLI do
       |> maybe_override_execution_surface(Keyword.get(opts, :execution_surface))
       |> Options.validate!()
 
-    with {:ok, %CommandSpec{} = command_spec} <-
-           GeminiCLI.resolve(
-             execution_surface: options.execution_surface,
-             cli_command: options.cli_command
-           ),
+    with :ok <- GovernedLaunch.validate_options(options),
+         {:ok, command_spec} <- command_spec_for_options(options),
          {:ok, settings_cwd, temp_dir} <- Config.build_runtime_workspace(options.settings) do
       session_opts =
         build_session_options(
@@ -294,14 +291,39 @@ defmodule GeminiCliSdk.Runtime.CLI do
   def build_invocation(opts) when is_list(opts) do
     prompt = Keyword.get(opts, :prompt, "")
 
-    with true <- is_binary(prompt) || {:error, {:missing_option, :prompt}},
-         %CommandSpec{} = command_spec <- Keyword.get(opts, :command_spec),
+    case is_binary(prompt) do
+      true ->
+        options = options_from_provider_opts(opts)
+        args = ArgBuilder.build_args(options, prompt)
+        build_invocation_from_launch_mode(args, opts)
+
+      false ->
+        {:error, {:missing_option, :prompt}}
+    end
+  end
+
+  defp build_invocation_from_launch_mode(args, opts) do
+    if GovernedLaunch.governed?(opts) do
+      GovernedLaunch.invocation(args, opts)
+    else
+      build_standalone_invocation(args, opts)
+    end
+  end
+
+  defp command_spec_for_options(%Options{} = options) do
+    if GovernedLaunch.governed?(options) do
+      {:ok, nil}
+    else
+      GeminiCLI.resolve(
+        execution_surface: options.execution_surface,
+        cli_command: options.cli_command
+      )
+    end
+  end
+
+  defp build_standalone_invocation(args, opts) do
+    with %CommandSpec{} = command_spec <- Keyword.get(opts, :command_spec),
          true <- is_binary(command_spec.program) || {:error, {:missing_option, :command_spec}} do
-      options = options_from_provider_opts(opts)
-
-      args =
-        ArgBuilder.build_args(options, prompt)
-
       {:ok,
        CliSubprocessCore.Command.new(
          command_spec,
@@ -309,18 +331,15 @@ defmodule GeminiCliSdk.Runtime.CLI do
          cwd: Keyword.get(opts, :cwd)
        )}
     else
-      {:error, _reason} = error ->
-        error
-
-      _other ->
-        {:error, {:missing_option, :command_spec}}
+      {:error, _reason} = error -> error
+      _other -> {:error, {:missing_option, :command_spec}}
     end
   end
 
   defp build_session_options(
          prompt,
          %Options{} = options,
-         %CommandSpec{} = command_spec,
+         command_spec,
          settings_cwd,
          runtime_opts
        ) do
@@ -328,7 +347,7 @@ defmodule GeminiCliSdk.Runtime.CLI do
       @runtime_metadata
       |> Map.merge(Keyword.get(runtime_opts, :metadata, %{}))
 
-    [
+    base_opts = [
       provider: :gemini,
       profile: Profile,
       subscriber: Keyword.get(runtime_opts, :subscriber),
@@ -336,7 +355,6 @@ defmodule GeminiCliSdk.Runtime.CLI do
       session_event_tag:
         Keyword.get(runtime_opts, :session_event_tag, @default_session_event_tag),
       prompt: prompt,
-      command_spec: command_spec,
       output_format: options.output_format,
       model_payload: options.model_payload,
       model: options.model,
@@ -351,10 +369,18 @@ defmodule GeminiCliSdk.Runtime.CLI do
       allowed_mcp_server_names: options.allowed_mcp_server_names,
       debug: options.debug,
       system_prompt: options.system_prompt,
-      cwd: default_cwd(options.cwd, options.execution_surface, settings_cwd),
       headless_timeout_ms: :infinity,
       max_stderr_buffer_size: options.max_stderr_buffer_bytes
-    ] ++ Options.execution_surface_options(options)
+    ]
+
+    if GovernedLaunch.governed?(options) do
+      Keyword.put(base_opts, :governed_authority, options.governed_authority)
+    else
+      base_opts
+      |> Keyword.put(:command_spec, command_spec)
+      |> Keyword.put(:cwd, default_cwd(options.cwd, options.execution_surface, settings_cwd))
+      |> Kernel.++(Options.execution_surface_options(options))
+    end
   end
 
   defp options_from_provider_opts(opts) do
@@ -373,7 +399,8 @@ defmodule GeminiCliSdk.Runtime.CLI do
       allowed_mcp_server_names: Keyword.get(opts, :allowed_mcp_server_names, []),
       debug: Keyword.get(opts, :debug, false),
       output_format: Keyword.get(opts, :output_format, "stream-json"),
-      system_prompt: Keyword.get(opts, :system_prompt)
+      system_prompt: Keyword.get(opts, :system_prompt),
+      governed_authority: Keyword.get(opts, :governed_authority)
     }
   end
 

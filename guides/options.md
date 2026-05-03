@@ -6,6 +6,7 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
 
 ```elixir
 %GeminiCliSdk.Options{
+  governed_authority: nil,           # Materialized authority for governed launch
   model_payload: nil,              # Shared core Selection (or a canonicalizable map form)
   model: nil,                      # Model name (e.g., Models.fast_model(), Models.default_model())
   cli_command: nil,                # Explicit gemini executable or command name
@@ -27,6 +28,11 @@ The `GeminiCliSdk.Options` struct controls how the Gemini CLI is invoked. All fi
   max_stderr_buffer_bytes: 65_536  # Max buffered stderr before truncation
 }
 ```
+
+`governed_authority` selects governed mode. When set, the SDK rejects
+`cli_command`, `cwd`, settings-backed `.gemini` config roots, execution-surface
+overrides, and model-payload env overrides. Standalone direct use keeps those
+normal CLI/native-login controls when `governed_authority` is nil.
 
 ## Common Patterns
 

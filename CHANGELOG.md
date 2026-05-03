@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- Governed Gemini launch authority support for one-shot commands and session
+  launch. Callers can pass `Options.governed_authority` with materialized
+  command, cwd, env, target, credential lease, command reference, and redaction
+  reference.
+
+### Changed
+
+- Gemini CLI discovery, explicit CLI command paths, native login state,
+  settings-backed `.gemini` config roots, cwd overrides, and execution surface
+  overrides remain standalone direct-use behavior only. Governed launch now
+  rejects those caller-supplied values and launches only from the materialized
+  authority contract.
+
 ## v0.2.0 (2026-04-06)
 
 ### Added

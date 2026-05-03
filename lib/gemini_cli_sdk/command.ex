@@ -10,20 +10,24 @@ defmodule GeminiCliSdk.Command do
   alias CliSubprocessCore.ProcessExit
   alias CliSubprocessCore.ProviderCLI
   alias CliSubprocessCore.TransportError, as: CoreTransportError
-  alias GeminiCliSdk.{CLI, Configuration, Error, Options}
+  alias GeminiCliSdk.{CLI, Configuration, Error, GovernedLaunch, Options}
 
   @type run_opt ::
           {:timeout, non_neg_integer() | :infinity}
           | {:stdin, iodata()}
           | {:cd, String.t()}
           | {:cli_command, String.t()}
+          | {:governed_authority, CliSubprocessCore.GovernedAuthority.t() | keyword() | map()}
           | {:execution_surface, CliSubprocessCore.ExecutionSurface.t() | map() | keyword()}
 
   @spec run([String.t()], [run_opt()]) :: {:ok, String.t()} | {:error, Error.t()}
   def run(args, opts \\ []) when is_list(args) and is_list(opts) do
     with :ok <- reject_unsupported_options(opts),
-         {:ok, command} <- CLI.resolve(Keyword.take(opts, [:execution_surface, :cli_command])) do
-      run(command, args, opts)
+         {:ok, authority} <- GovernedLaunch.authority(opts) do
+      run_with_authority(authority, args, opts)
+    else
+      {:error, %Error{} = error} -> {:error, error}
+      {:error, reason} -> {:error, governed_configuration_error(reason)}
     end
   end
 
@@ -31,6 +35,7 @@ defmodule GeminiCliSdk.Command do
           {:ok, String.t()} | {:error, Error.t()}
   def run(%CommandSpec{} = command, args, opts) when is_list(args) and is_list(opts) do
     with :ok <- reject_unsupported_options(opts),
+         :ok <- reject_governed_command_spec(opts),
          {:ok, execution_surface_opts} <- execution_surface_options(opts) do
       timeout = Keyword.get(opts, :timeout, Configuration.command_timeout_ms())
       command_args = CLI.command_args(command, args)
@@ -50,6 +55,46 @@ defmodule GeminiCliSdk.Command do
         {:error, %CoreCommandError{} = error} ->
           {:error, translate_command_error(error, timeout, command, command_args, opts)}
       end
+    end
+  end
+
+  defp run_with_authority(nil, args, opts) do
+    case CLI.resolve(Keyword.take(opts, [:execution_surface, :cli_command])) do
+      {:ok, command} -> run(command, args, opts)
+      {:error, %Error{} = error} -> {:error, error}
+    end
+  end
+
+  defp run_with_authority(authority, args, opts), do: run_governed(authority, args, opts)
+
+  defp run_governed(authority, args, opts) do
+    case GovernedLaunch.validate_command_options(opts) do
+      :ok ->
+        timeout = Keyword.get(opts, :timeout, Configuration.command_timeout_ms())
+        command = CliSubprocessCore.GovernedAuthority.command_spec(authority)
+        command_args = CLI.command_args(command, args)
+
+        invocation =
+          CoreCommand.new(
+            command,
+            args,
+            CliSubprocessCore.GovernedAuthority.launch_options(authority)
+          )
+
+        case CoreCommand.run(
+               invocation,
+               [stdin: Keyword.get(opts, :stdin), timeout: timeout, stderr: :separate]
+               |> GovernedLaunch.run_options(opts)
+             ) do
+          {:ok, %RunResult{} = result} ->
+            handle_run_result(result, command, command_args, opts)
+
+          {:error, %CoreCommandError{} = error} ->
+            {:error, translate_command_error(error, timeout, command, command_args, opts)}
+        end
+
+      {:error, reason} ->
+        {:error, governed_configuration_error(reason)}
     end
   end
 
@@ -186,6 +231,27 @@ defmodule GeminiCliSdk.Command do
     else
       :ok
     end
+  end
+
+  defp reject_governed_command_spec(opts) do
+    case GovernedLaunch.authority(opts) do
+      {:ok, nil} ->
+        :ok
+
+      {:ok, _authority} ->
+        {:error, governed_configuration_error({:governed_launch_smuggling, :command_spec})}
+
+      {:error, reason} ->
+        {:error, governed_configuration_error(reason)}
+    end
+  end
+
+  defp governed_configuration_error(reason) do
+    Error.new(
+      kind: :invalid_configuration,
+      message: "governed Gemini launch rejected: #{inspect(reason)}",
+      cause: reason
+    )
   end
 
   defp execution_surface_options(opts) when is_list(opts) do
