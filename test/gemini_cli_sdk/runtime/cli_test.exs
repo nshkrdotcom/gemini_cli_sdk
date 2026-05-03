@@ -291,6 +291,25 @@ defmodule GeminiCliSdk.Runtime.CLITest do
 
       assert exit_failure.message =~ "code 0"
     end
+
+    test "drops provider-authored unknown runtime error kinds instead of atomizing them" do
+      state = CLI.new_projection_state()
+
+      runtime_error =
+        Event.new(:error,
+          raw: %{"type" => "error"},
+          payload:
+            Payload.Error.new(
+              message: "provider invented failure",
+              code: "provider-invented-kind",
+              metadata: %{}
+            )
+        )
+
+      assert {[event], _state} = CLI.project_event(runtime_error, state)
+      assert %Types.ErrorEvent{severity: "fatal", kind: :unknown} = event
+      assert event.message == "provider invented failure"
+    end
   end
 
   describe "render_for_test/1" do

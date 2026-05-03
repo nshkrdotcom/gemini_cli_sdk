@@ -31,6 +31,29 @@ defmodule GeminiCliSdk do
   alias GeminiCliSdk.{Error, Options, Types}
 
   @type event :: Types.stream_event()
+  @error_kind_aliases %{
+    "auth_error" => :auth_error,
+    "cli_not_found" => :cli_not_found,
+    "command_failed" => :command_failed,
+    "command_timeout" => :command_timeout,
+    "command_execution_failed" => :command_execution_failed,
+    "config_error" => :config_error,
+    "config_invalid" => :config_invalid,
+    "execution_failed" => :execution_failed,
+    "input_error" => :input_error,
+    "invalid_configuration" => :invalid_configuration,
+    "invalid_event" => :invalid_event,
+    "json_decode_error" => :json_decode_error,
+    "no_result" => :no_result,
+    "parse_error" => :parse_error,
+    "stream_start_failed" => :stream_start_failed,
+    "stream_timeout" => :stream_timeout,
+    "transport_error" => :transport_error,
+    "transport_exit" => :transport_exit,
+    "unknown" => :unknown,
+    "unknown_event_type" => :unknown_event_type,
+    "user_cancelled" => :user_cancelled
+  }
 
   # --- Streaming execution ---
 
@@ -98,28 +121,38 @@ defmodule GeminiCliSdk do
     )
   end
 
-  defp normalize_error_kind(kind, message) when kind in [nil, :unknown],
-    do: infer_error_kind(message)
+  defp normalize_error_kind(nil, message), do: infer_error_kind(message)
+  defp normalize_error_kind(:unknown, _message), do: :unknown
 
   defp normalize_error_kind(kind, _message) when is_atom(kind), do: kind
 
-  defp normalize_error_kind(kind, message) when kind in ["", "unknown"],
-    do: infer_error_kind(message)
+  defp normalize_error_kind("", message), do: infer_error_kind(message)
+  defp normalize_error_kind("unknown", _message), do: :unknown
 
   defp normalize_error_kind(kind, _message) when is_binary(kind) do
     kind
-    |> String.downcase()
-    |> String.replace("-", "_")
-    |> String.to_atom()
+    |> normalize_error_kind_key()
+    |> then(&Map.get(@error_kind_aliases, &1, :unknown))
   end
 
   defp normalize_error_kind(_kind, message), do: infer_error_kind(message)
 
   defp infer_error_kind(message) when is_binary(message) do
-    if String.match?(message, ~r/auth/i), do: :auth_error, else: :command_failed
+    if message |> String.downcase() |> String.contains?("auth") do
+      :auth_error
+    else
+      :command_failed
+    end
   end
 
   defp infer_error_kind(_message), do: :command_failed
+
+  defp normalize_error_kind_key(value) do
+    value
+    |> String.trim()
+    |> String.downcase()
+    |> String.replace("-", "_")
+  end
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)

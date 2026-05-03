@@ -17,8 +17,6 @@ defmodule GeminiCliSdk.Session do
           }
   end
 
-  @entry_regex ~r/^\s*(?<index>\d+)\.\s+(?<label>.+?)\s+\[(?<id>[^\]]+)\]\s*$/
-
   @spec list(keyword()) :: {:ok, String.t()} | {:error, GeminiCliSdk.Error.t()}
   def list(opts \\ []) do
     Command.run(["--list-sessions"], opts)
@@ -53,22 +51,69 @@ defmodule GeminiCliSdk.Session do
     |> String.split("\n", trim: true)
     |> Enum.map(&String.trim_trailing/1)
     |> Enum.reduce([], fn line, acc ->
-      case Regex.named_captures(@entry_regex, line) do
-        %{"id" => id, "index" => index, "label" => label} ->
-          [
-            %Entry{
-              id: String.trim(id),
-              index: String.to_integer(index),
-              label: String.trim(label),
-              raw_line: line
-            }
-            | acc
-          ]
-
-        _ ->
-          acc
+      case parse_entry_line(line) do
+        {:ok, entry} -> [entry | acc]
+        :error -> acc
       end
     end)
     |> Enum.reverse()
   end
+
+  defp parse_entry_line(line) do
+    with {:ok, index, rest} <- split_index(String.trim(line)),
+         {:ok, label, id} <- split_label_and_id(rest) do
+      {:ok,
+       %Entry{
+         id: id,
+         index: index,
+         label: label,
+         raw_line: line
+       }}
+    else
+      :error -> :error
+    end
+  end
+
+  defp split_index(line) do
+    case :binary.match(line, ".") do
+      {dot_at, 1} ->
+        index_text = binary_part(line, 0, dot_at)
+        rest = binary_part(line, dot_at + 1, byte_size(line) - dot_at - 1)
+
+        with true <- digits_only?(index_text),
+             {index, ""} <- Integer.parse(index_text) do
+          {:ok, index, String.trim_leading(rest)}
+        else
+          _ -> :error
+        end
+
+      :nomatch ->
+        :error
+    end
+  end
+
+  defp split_label_and_id(rest) do
+    trimmed = String.trim(rest)
+
+    with true <- String.ends_with?(trimmed, "]"),
+         [_first | _rest] = parts <- String.split(trimmed, "["),
+         id_part <- List.last(parts),
+         label_parts <- Enum.drop(parts, -1),
+         id <- id_part |> String.trim_trailing("]") |> String.trim(),
+         label <- label_parts |> Enum.join("[") |> String.trim(),
+         true <- id != "",
+         true <- label != "" do
+      {:ok, label, id}
+    else
+      _ -> :error
+    end
+  end
+
+  defp digits_only?(value) when is_binary(value) and value != "" do
+    value
+    |> String.to_charlist()
+    |> Enum.all?(&(&1 in ?0..?9))
+  end
+
+  defp digits_only?(_value), do: false
 end

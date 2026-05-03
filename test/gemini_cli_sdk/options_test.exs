@@ -40,17 +40,17 @@ defmodule GeminiCliSdk.OptionsTest do
     test "raises when yolo and approval_mode are both set" do
       opts = %Options{yolo: true, approval_mode: :yolo}
 
-      assert_raise ArgumentError, ~r/Cannot set both/, fn ->
-        Options.validate!(opts)
-      end
+      error = assert_raise ArgumentError, fn -> Options.validate!(opts) end
+
+      assert Exception.message(error) =~ "Cannot set both"
     end
 
     test "raises for invalid approval_mode" do
       opts = %Options{approval_mode: :invalid_mode}
 
-      assert_raise ArgumentError, ~r/Invalid approval_mode/, fn ->
-        Options.validate!(opts)
-      end
+      error = assert_raise ArgumentError, fn -> Options.validate!(opts) end
+
+      assert Exception.message(error) =~ "Invalid approval_mode"
     end
 
     test "allows valid approval_modes" do
@@ -71,12 +71,21 @@ defmodule GeminiCliSdk.OptionsTest do
       assert validated.model == Models.default_model()
     end
 
+    test "raises for invalid approval_mode string aliases" do
+      error =
+        assert_raise ArgumentError, fn ->
+          Options.validate!(%Options{approval_mode: "invented-mode"})
+        end
+
+      assert Exception.message(error) =~ "Invalid approval_mode"
+    end
+
     test "raises when include_directories exceeds 5" do
       opts = %Options{include_directories: Enum.map(1..6, &"dir#{&1}")}
 
-      assert_raise ArgumentError, ~r/Maximum #{Configuration.max_include_directories()}/, fn ->
-        Options.validate!(opts)
-      end
+      error = assert_raise ArgumentError, fn -> Options.validate!(opts) end
+
+      assert Exception.message(error) =~ "Maximum #{Configuration.max_include_directories()}"
     end
 
     test "allows up to 5 include_directories" do
@@ -90,23 +99,26 @@ defmodule GeminiCliSdk.OptionsTest do
     test "raises when timeout_ms is not positive" do
       opts = %Options{timeout_ms: 0}
 
-      assert_raise ArgumentError, ~r/timeout_ms must be positive/, fn ->
-        Options.validate!(opts)
-      end
+      error = assert_raise ArgumentError, fn -> Options.validate!(opts) end
+
+      assert Exception.message(error) =~ "timeout_ms must be positive"
     end
 
     test "raises when timeout_ms is negative" do
       opts = %Options{timeout_ms: -1}
 
-      assert_raise ArgumentError, ~r/timeout_ms must be positive/, fn ->
-        Options.validate!(opts)
-      end
+      error = assert_raise ArgumentError, fn -> Options.validate!(opts) end
+
+      assert Exception.message(error) =~ "timeout_ms must be positive"
     end
 
     test "raises when allowed_tools is not a string list" do
-      assert_raise ArgumentError, ~r/allowed_tools/, fn ->
-        Options.validate!(%Options{allowed_tools: :read_file})
-      end
+      error =
+        assert_raise ArgumentError, fn ->
+          Options.validate!(%Options{allowed_tools: :read_file})
+        end
+
+      assert Exception.message(error) =~ "allowed_tools"
     end
 
     test "treats an explicit model_payload as authoritative" do
@@ -121,10 +133,8 @@ defmodule GeminiCliSdk.OptionsTest do
     end
 
     test "does not accept env as an options field" do
-      field = [:e, :n, :v] |> Enum.join() |> String.to_atom()
-
       assert_raise KeyError, fn ->
-        struct!(Options, [{field, %{"MODEL" => Models.default_model()}}])
+        struct!(Options, [{:env, %{"MODEL" => Models.default_model()}}])
       end
     end
 
@@ -151,9 +161,12 @@ defmodule GeminiCliSdk.OptionsTest do
       {:ok, payload} =
         CliSubprocessCore.ModelRegistry.build_arg_payload(:gemini, Models.fast_model(), [])
 
-      assert_raise ArgumentError, ~r/model_payload_conflict/, fn ->
-        Options.validate!(%Options{model_payload: payload, model: Models.default_model()})
-      end
+      error =
+        assert_raise ArgumentError, fn ->
+          Options.validate!(%Options{model_payload: payload, model: Models.default_model()})
+        end
+
+      assert Exception.message(error) =~ "model_payload_conflict"
     end
 
     test "normalizes execution_surface from provider-facing keyword input" do

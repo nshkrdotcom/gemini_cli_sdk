@@ -177,13 +177,11 @@ defmodule GeminiCliSdk.Command do
     do: CoreTransportError.match?(reason) or ProcessExit.match?(reason)
 
   defp reject_unsupported_options(opts) do
-    unsupported_key = String.to_atom("env")
-
-    if Keyword.has_key?(opts, unsupported_key) do
+    if Keyword.has_key?(opts, :env) do
       {:error,
        Error.new(
          kind: :invalid_configuration,
-         message: "unsupported command option: #{unsupported_key}"
+         message: "unsupported command option: env"
        )}
     else
       :ok

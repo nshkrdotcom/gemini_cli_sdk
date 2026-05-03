@@ -90,6 +90,35 @@ defmodule GeminiCliSdkTest do
       end
     end
 
+    test "does not atomize provider-authored fatal error kind strings" do
+      dir = TestSupport.tmp_dir!("gemini_api_unknown_error_kind")
+      fixture = Path.join(dir, "unknown_error.jsonl")
+
+      File.write!(
+        fixture,
+        Jason.encode!(%{
+          type: "error",
+          severity: "fatal",
+          message: "provider invented failure",
+          kind: "provider-invented-kind"
+        }) <> "\n"
+      )
+
+      stub_path = TestSupport.write_cli_stub!(dir, stream_file: fixture)
+
+      try do
+        assert {:error, %Error{kind: :command_failed} = error} =
+                 GeminiCliSdk.run("bad prompt", %Options{
+                   cli_command: stub_path,
+                   timeout_ms: 5_000
+                 })
+
+        assert error.context.details["kind"] == "provider-invented-kind"
+      after
+        File.rm_rf(dir)
+      end
+    end
+
     test "returns error when explicit CLI path is not found" do
       assert {:error, %Error{}} =
                GeminiCliSdk.run("hello", %Options{
@@ -137,6 +166,26 @@ defmodule GeminiCliSdkTest do
         assert second.id == "def456"
         assert second.label == "Refactor"
         assert second.index == 2
+      after
+        File.rm_rf(dir)
+      end
+    end
+
+    test "list_session_entries/1 parses bracketed labels with fixed parsing" do
+      dir = TestSupport.tmp_dir!("gemini_api_session_entries_brackets")
+
+      stub_path =
+        TestSupport.write_cli_stub!(dir,
+          output: "Available sessions (2):\n  12. Fix [draft] label [sess-12]\n  not a session"
+        )
+
+      try do
+        assert {:ok, [%GeminiCliSdk.Session.Entry{} = session]} =
+                 GeminiCliSdk.list_session_entries(cli_command: stub_path)
+
+        assert session.id == "sess-12"
+        assert session.label == "Fix [draft] label"
+        assert session.index == 12
       after
         File.rm_rf(dir)
       end

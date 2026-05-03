@@ -95,10 +95,8 @@ defmodule GeminiCliSdk.CommandTest do
     end
 
     test "rejects the removed command environment option" do
-      removed_option = [:e, :n, :v] |> Enum.join() |> String.to_atom()
-
       assert {:error, %Error{kind: :invalid_configuration} = error} =
-               Command.run(["--version"], [{removed_option, %{}}])
+               Command.run(["--version"], [{:env, %{}}])
 
       assert error.message =~ "unsupported command option"
     end
