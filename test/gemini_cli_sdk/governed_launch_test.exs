@@ -138,13 +138,58 @@ defmodule GeminiCliSdk.GovernedLaunchTest do
         File.rm_rf(dir)
       end
     end
+
+    test "keeps two native auth roots distinct and redacts projected launch state" do
+      command = "/authority/bin/gemini"
+
+      {:ok, root_a} =
+        GovernedLaunch.authority(
+          governed_authority:
+            governed_authority(command,
+              provider_account_ref: "provider-account:gemini:a",
+              native_auth_assertion_ref: "native-auth-assertion:gemini:a",
+              auth_root: "/authority/gemini/a"
+            )
+        )
+
+      {:ok, root_b} =
+        GovernedLaunch.authority(
+          governed_authority:
+            governed_authority(command,
+              provider_account_ref: "provider-account:gemini:b",
+              native_auth_assertion_ref: "native-auth-assertion:gemini:b",
+              auth_root: "/authority/gemini/b"
+            )
+        )
+
+      assert root_a.provider_account_ref == "provider-account:gemini:a"
+      assert root_b.provider_account_ref == "provider-account:gemini:b"
+      assert root_a.native_auth_assertion_ref != root_b.native_auth_assertion_ref
+
+      projection = CliSubprocessCore.GovernedAuthority.redacted(root_a)
+
+      assert projection.provider_account_ref == "provider-account:gemini:a"
+      assert projection.native_auth_assertion_ref == "native-auth-assertion:gemini:a"
+      assert projection.command != command
+      assert String.starts_with?(projection.auth_root, "[redacted:")
+      refute String.contains?(inspect(projection), "/authority/gemini/a")
+    end
   end
 
   defp governed_authority(command, opts \\ []) do
     [
       authority_ref: "authority:gemini:test",
       credential_lease_ref: "lease:gemini:test",
+      connector_instance_ref:
+        Keyword.get(opts, :connector_instance_ref, "connector-instance:gemini:test"),
+      connector_binding_ref:
+        Keyword.get(opts, :connector_binding_ref, "connector-binding:gemini:test"),
+      provider_account_ref:
+        Keyword.get(opts, :provider_account_ref, "provider-account:gemini:test"),
+      native_auth_assertion_ref:
+        Keyword.get(opts, :native_auth_assertion_ref, "native-auth-assertion:gemini:test"),
       target_ref: "target:gemini:test",
+      operation_policy_ref: "operation-policy:gemini:test",
       command: command,
       cwd: Keyword.get(opts, :cwd),
       env: Keyword.get(opts, :env, %{}),
