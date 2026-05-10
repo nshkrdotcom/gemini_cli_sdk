@@ -1,3 +1,7 @@
+unless Code.ensure_loaded?(DependencySources) do
+  Code.require_file("build_support/dependency_sources.exs", __DIR__)
+end
+
 defmodule GeminiCliSdk.MixProject do
   use Mix.Project
 
@@ -6,7 +10,6 @@ defmodule GeminiCliSdk.MixProject do
   @source_url "https://github.com/nshkrdotcom/gemini_cli_sdk"
   @homepage_url "https://hex.pm/packages/gemini_cli_sdk"
   @docs_url "https://hexdocs.pm/gemini_cli_sdk"
-  @cli_subprocess_core_version "~> 0.1.0"
   def project do
     [
       app: @app,
@@ -47,35 +50,13 @@ defmodule GeminiCliSdk.MixProject do
 
   defp deps do
     [
-      cli_subprocess_core_dep(),
+      DependencySources.dep(:cli_subprocess_core, __DIR__),
       {:jason, "~> 1.4"},
       {:zoi, "~> 0.17"},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
-  end
-
-  defp cli_subprocess_core_dep do
-    case local_dep_path("../cli_subprocess_core") do
-      nil -> {:cli_subprocess_core, @cli_subprocess_core_version}
-      path -> {:cli_subprocess_core, path: path}
-    end
-  end
-
-  defp local_dep_path(relative_path) do
-    if local_workspace_deps?() do
-      path = Path.expand(relative_path, __DIR__)
-      if File.dir?(path), do: path
-    end
-  end
-
-  defp local_workspace_deps? do
-    not hex_packaging_task?() and not Enum.member?(Path.split(__DIR__), "deps")
-  end
-
-  defp hex_packaging_task? do
-    Enum.any?(System.argv(), &(&1 in ["hex.build", "hex.publish"]))
   end
 
   defp description do
@@ -95,7 +76,8 @@ defmodule GeminiCliSdk.MixProject do
         "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
       },
       maintainers: ["nshkrdotcom"],
-      files: ~w(lib assets mix.exs README.md LICENSE CHANGELOG.md .formatter.exs)
+      files:
+        ~w(lib assets build_support mix.exs README.md LICENSE CHANGELOG.md .formatter.exs AGENTS.md)
     ]
   end
 

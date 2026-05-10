@@ -6,10 +6,20 @@
 - `guides/`, `examples/`, `README.md`, and `CHANGELOG.md` must stay aligned with runtime and dependency behavior.
 - `doc/` is generated output and should not be edited.
 
+## Dependency Sources
+- Gemini CLI SDK is not in the Weld consumer set. Do not add a Weld dependency, Weld task, or Weld Credo check as part of Phase 2 cleanup.
+- Cross-repo dependency selection belongs in `build_support/dependency_sources.config.exs` and is consumed through the canonical `build_support/dependency_sources.exs` helper.
+- Machine-local dependency overrides belong in `.dependency_sources.local.exs`. Keep that file untracked.
+- Dependency source selection must not read environment variables.
+
 ## Execution Plane Stack
 - This SDK sits above `cli_subprocess_core`; do not expose raw `ExecutionPlane.*` internals in public APIs or docs.
 - Use `CliSubprocessCore` facades for execution surfaces, transport errors, transport info, process exits, sessions, commands, and provider model policy.
 - Keep `cli_subprocess_core` dependency resolution publish-aware: local path deps for sibling development, Hex constraints for release builds.
+
+## Runtime Environment
+- Runtime application code under `lib/**` must not call direct OS environment APIs such as `System.get_env/1`, `System.fetch_env/1`, `System.fetch_env!/1`, `System.put_env/2`, `System.delete_env/1`, or `System.get_env/0`.
+- Deployment environment reads belong at OTP boot boundaries such as `config/runtime.exs` or a `Config.Provider`. Runtime modules should receive explicit options or materialized application config.
 
 ## ASM Boundary
 - Gemini-specific flags, settings profiles, extensions, allowed tools, MCP server names, approval mode, skip-trust, and provider CLI sandbox behavior belong in this SDK first.

@@ -23,3 +23,5 @@ gemini_cli_sdk-*.tar
 /tmp/
 
 gemini-cli/
+
+.dependency_sources.local.exs
